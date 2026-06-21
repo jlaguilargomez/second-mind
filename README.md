@@ -6,6 +6,10 @@ Una aplicación local-first inspirada en los diarios enlazados para registrar tr
 
 [Abrir Second Mind en GitHub Pages](https://jlaguilargomez.github.io/second-mind/)
 
+## Documentación técnica
+
+[Arquitectura y lecciones aprendidas](./TECHNICAL_LESSONS.md)
+
 ## Desarrollo
 
 ```bash
