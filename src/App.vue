@@ -43,6 +43,7 @@ const newContextType = ref('project')
 const selectedTag = ref(null)
 const taskFilter = ref('open')
 const contextFilter = ref('all')
+const priorityFilter = ref('all')
 const priorityRank = { high: 0, medium: 1, base: 2 }
 const reminderBlock = ref(null)
 const importInput = ref(null)
@@ -92,6 +93,12 @@ const filteredTasks = computed(() =>
     ) {
       return false
     }
+    if (
+      priorityFilter.value !== 'all' &&
+      (task.priority || 'base') !== priorityFilter.value
+    ) {
+      return false
+    }
     if (selectedTag.value && !task.tags.includes(selectedTag.value)) return false
     return true
   }).sort(
@@ -100,6 +107,20 @@ const filteredTasks = computed(() =>
       (a.reminder || '9999-12-31').localeCompare(b.reminder || '9999-12-31'),
   ),
 )
+
+const hasTaskFilters = computed(() =>
+  taskFilter.value !== 'open' ||
+  contextFilter.value !== 'all' ||
+  priorityFilter.value !== 'all' ||
+  Boolean(selectedTag.value),
+)
+
+function clearTaskFilters() {
+  taskFilter.value = 'open'
+  contextFilter.value = 'all'
+  priorityFilter.value = 'all'
+  selectedTag.value = null
+}
 
 function priorityLabel(priority) {
   return { medium: 'Media', high: 'Alta' }[priority] || ''
@@ -538,21 +559,53 @@ onBeforeUnmount(() => {
               <p>Todo lo accionable, sin perder el día ni el contexto donde nació.</p>
             </div>
             <div class="filter-bar">
-              <button
-                v-for="filter in ['open', 'today', 'completed', 'all']"
-                :key="filter"
-                :class="{ active: taskFilter === filter }"
-                @click="taskFilter = filter"
-              >{{ { open: 'Pendientes', today: 'Hoy', completed: 'Completadas', all: 'Todas' }[filter] }}</button>
-              <select v-model="contextFilter">
-                <option value="all">Todos los contextos</option>
-                <option v-for="context in contextIndex" :key="context.name" :value="context.name">
-                  @{{ context.name }}
-                </option>
-              </select>
-              <button v-if="selectedTag" class="active" @click="selectedTag = null">
-                #{{ selectedTag }} ×
-              </button>
+              <div class="status-filters" aria-label="Estado de las tareas">
+                <button
+                  v-for="filter in ['open', 'today', 'completed', 'all']"
+                  :key="filter"
+                  :class="{ active: taskFilter === filter }"
+                  @click="taskFilter = filter"
+                >{{ { open: 'Pendientes', today: 'Hoy', completed: 'Completadas', all: 'Todas' }[filter] }}</button>
+              </div>
+              <div class="task-filter-selects">
+                <label>
+                  <span>Contexto</span>
+                  <select v-model="contextFilter" aria-label="Filtrar tareas por contexto">
+                    <option value="all">Todos</option>
+                    <option v-for="context in contextIndex" :key="context.name" :value="context.name">
+                      @{{ context.name }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  <span>Prioridad</span>
+                  <select v-model="priorityFilter" aria-label="Filtrar tareas por prioridad">
+                    <option value="all">Todas</option>
+                    <option value="high">Alta</option>
+                    <option value="medium">Media</option>
+                    <option value="base">Base</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Etiqueta</span>
+                  <select
+                    :value="selectedTag || 'all'"
+                    aria-label="Filtrar tareas por etiqueta"
+                    @change="selectedTag = $event.target.value === 'all' ? null : $event.target.value"
+                  >
+                    <option value="all">Todas</option>
+                    <option v-for="tag in tags" :key="tag.name" :value="tag.name">
+                      #{{ tag.name }}
+                    </option>
+                  </select>
+                </label>
+              </div>
+              <div class="filter-summary">
+                <span>{{ pluralize(filteredTasks.length, 'resultado') }}</span>
+                <button v-if="hasTaskFilters" class="clear-filters-button" @click="clearTaskFilters">
+                  Limpiar filtros
+                </button>
+              </div>
             </div>
             <div v-if="filteredTasks.length" class="task-list">
               <article

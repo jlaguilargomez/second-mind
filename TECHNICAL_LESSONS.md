@@ -520,3 +520,20 @@ Los contextos reúnen entradas procedentes de distintos diarios. Su copia añade
 El botón utiliza la API moderna del portapapeles y conserva una alternativa local para navegadores compatibles que no la expongan. La confirmación visual es temporal y accesible, evitando modales o pasos adicionales.
 
 La lección es que “portable” no siempre significa “adecuado para personas”. Conviene separar una representación fiel para almacenamiento de otra concisa para interoperabilidad cotidiana.
+
+## 21. Filtros combinables como estado explícito
+
+La vista de tareas tenía filtros de estado y contexto, mientras que las etiquetas dependían de haber navegado previamente desde la barra lateral. Esa diferencia hacía difícil saber qué criterios estaban activos y no permitía seleccionar una etiqueta directamente desde la propia vista.
+
+Cada dimensión se representa ahora mediante estado independiente:
+
+- Estado de la tarea.
+- Contexto relacionado.
+- Prioridad.
+- Etiqueta.
+
+El resultado es la intersección de todos los criterios activos. Los filtros no alteran los datos ni crean consultas persistentes; son una proyección local sobre el índice de tareas. Una acción única restablece el estado inicial y el contador comunica inmediatamente el tamaño del resultado.
+
+En móvil, los desplegables pasan de tres columnas a una sola para mantener objetivos táctiles amplios y evitar truncar nombres de contextos.
+
+La lección es que los filtros combinables deben ser visibles, simétricos y reversibles. Si un criterio solo puede activarse desde otra pantalla, se convierte en estado oculto y aumenta la carga cognitiva.

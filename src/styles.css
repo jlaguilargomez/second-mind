@@ -273,11 +273,28 @@ kbd {
 .suggestion-menu button:hover, .suggestion-menu button.active { background: var(--paper-deep); }
 .suggestion-menu span { color: var(--green); }
 
-.filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
+.filter-bar { display: grid; gap: 12px; margin-bottom: 24px; }
+.status-filters { display: flex; flex-wrap: wrap; gap: 6px; }
 .filter-bar button, .filter-bar select {
   border: 1px solid var(--line); border-radius: 20px; padding: 8px 12px; background: transparent; font-size: 11px;
 }
 .filter-bar button.active { color: white; background: var(--ink); border-color: var(--ink); }
+.task-filter-selects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.task-filter-selects label { display: grid; gap: 5px; }
+.task-filter-selects label > span {
+  padding-left: 4px; color: #7d7b73; font-size: 9px; font-weight: 700;
+  letter-spacing: .7px; text-transform: uppercase;
+}
+.task-filter-selects select {
+  width: 100%; min-width: 0; border-radius: 8px; padding: 9px 11px;
+  color: #4f504b; background: rgba(255,255,255,.4);
+}
+.filter-summary { display: flex; align-items: center; justify-content: space-between; min-height: 29px; }
+.filter-summary > span { color: #77766f; font-size: 10px; }
+.filter-bar .clear-filters-button {
+  border: 0; border-radius: 6px; padding: 6px 8px; color: #6c6d67; background: transparent;
+}
+.filter-bar .clear-filters-button:hover { color: var(--green); background: var(--green-soft); }
 .task-list { display: flex; flex-direction: column; gap: 7px; }
 .task-card {
   display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: 9px;
@@ -524,6 +541,7 @@ kbd {
     margin-top: 2px;
   }
   .agenda-item { grid-template-columns: 84px minmax(0, 1fr) 22px; }
-  .filter-bar select { max-width: 160px; }
+  .task-filter-selects { grid-template-columns: 1fr; }
+  .filter-bar select { max-width: none; }
   .floating-import { display: none; }
 }

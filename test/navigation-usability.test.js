@@ -81,3 +81,20 @@ test('el día y el contexto permiten copiar una sección Markdown limpia', async
   assert.match(styles, /\.copy-section-button/)
   assert.match(styles, /\.copy-section-button\.copied/)
 })
+
+test('las tareas permiten combinar filtros de contexto, prioridad y etiqueta', async () => {
+  const [app, styles] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /const priorityFilter = ref\('all'\)/)
+  assert.match(app, /Filtrar tareas por contexto/)
+  assert.match(app, /Filtrar tareas por prioridad/)
+  assert.match(app, /Filtrar tareas por etiqueta/)
+  assert.match(app, /\(task\.priority \|\| 'base'\) !== priorityFilter\.value/)
+  assert.match(app, /function clearTaskFilters\(\)/)
+  assert.match(app, /Limpiar filtros/)
+  assert.match(styles, /\.task-filter-selects/)
+  assert.match(styles, /grid-template-columns:\s*repeat\(3,/)
+})

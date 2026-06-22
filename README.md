@@ -37,6 +37,8 @@ Las tareas admiten prioridad Base, Media o Alta. Base es el estado silencioso po
 
 Desde un día o una página de contexto se puede copiar la sección completa como Markdown limpio. La copia conserva tareas, subitems, recordatorios y prioridades, pero omite identificadores y timestamps internos.
 
+La vista de tareas admite filtros combinables por estado, contexto, prioridad y etiqueta, además de una acción para restablecer la selección.
+
 Cada bloque conserva un identificador estable y sus propiedades dentro del propio Markdown:
 
 ```md
