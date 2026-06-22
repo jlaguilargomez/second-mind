@@ -27,6 +27,19 @@ test('Intro crea y enfoca el bloque siguiente salvo cuando se solicita un salto 
   assert.match(editor, /if \(newBlock\) focusBlock\(newBlock\.id\)/)
 })
 
+test('el blur de la entrada anterior no cancela el foco de la nueva', async () => {
+  const editor = await readFile(
+    new URL('../src/components/BlockEditor.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(
+    editor,
+    /if \(focusedBlockId\.value === blockId\) focusedBlockId\.value = null/,
+  )
+  assert.match(editor, /focusBlock\(previous\.id\)/)
+})
+
 test('el autocompletado se puede recorrer y aceptar sin abandonar el teclado', async () => {
   const editor = await readFile(
     new URL('../src/components/BlockEditor.vue', import.meta.url),

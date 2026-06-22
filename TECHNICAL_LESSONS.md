@@ -341,6 +341,18 @@ Una revisión visual aislada no detectó varias fricciones que sí aparecieron a
 
 La lección general es probar la aplicación como una secuencia de intención, no como una colección de pantallas. Cada control debe conservar el flujo mental del usuario: capturar, clasificar, recuperar y continuar escribiendo.
 
+### Carreras entre `blur` y foco programático
+
+Al pulsar `Intro`, el nuevo bloque recibía foco correctamente, pero el `blur` diferido del bloque anterior lo eliminaba unos milisegundos después. El fallo parecía intermitente porque dependía del orden de renderizado y eventos.
+
+La limpieza diferida solo debe actuar si el bloque que originó el `blur` continúa siendo el bloque activo:
+
+```js
+if (focusedBlockId.value === blockId) focusedBlockId.value = null
+```
+
+La misma función centralizada de foco debe utilizarse al crear y al eliminar bloques, evitando llamadas directas a `element.focus()` que no actualicen el estado reactivo.
+
 ## 12. Deuda técnica consciente
 
 - El editor por bloques es propio y sencillo; no cubre todavía selección múltiple, drag and drop, undo global ni pegado estructurado.

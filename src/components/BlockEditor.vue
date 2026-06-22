@@ -60,7 +60,7 @@ function focusBlock(blockId) {
 function handleBlur(blockId) {
   window.setTimeout(() => {
     if (activeSuggestion.value?.blockId === blockId) return
-    focusedBlockId.value = null
+    if (focusedBlockId.value === blockId) focusedBlockId.value = null
   }, 100)
 }
 
@@ -165,7 +165,7 @@ function handleKeydown(block, index, event) {
     event.preventDefault()
     const previous = props.note.blocks[index - 1]
     emit('remove-block', block.id)
-    nextTick(() => inputRefs.get(previous.id)?.focus())
+    focusBlock(previous.id)
   }
 }
 
