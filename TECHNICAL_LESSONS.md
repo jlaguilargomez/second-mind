@@ -353,6 +353,14 @@ if (focusedBlockId.value === blockId) focusedBlockId.value = null
 
 La misma función centralizada de foco debe utilizarse al crear y al eliminar bloques, evitando llamadas directas a `element.focus()` que no actualicen el estado reactivo.
 
+### Foco accesible como parte del sistema visual
+
+Dejar el foco a los estilos nativos produce resultados distintos por navegador; en Safari, por ejemplo, un botón circular puede recibir un anillo azul que no encaja con la interfaz.
+
+No debe solucionarse ocultando siempre el foco. La aplicación define un estilo común con `:focus-visible`, que aparece en navegación por teclado, y utiliza una variante de doble anillo para controles circulares como las tareas. Los campos conservan además un cambio de borde y halo suave.
+
+Esto mantiene la orientación del usuario de teclado sin introducir ruido visual después de interacciones ordinarias con ratón o pantalla táctil.
+
 ## 12. Deuda técnica consciente
 
 - El editor por bloques es propio y sencillo; no cubre todavía selección múltiple, drag and drop, undo global ni pegado estructurado.

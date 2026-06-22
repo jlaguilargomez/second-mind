@@ -40,3 +40,29 @@ test('los recordatorios ofrecen fechas rápidas sin introducir horas', async () 
   assert.match(dialog, />Mañana<\/button>/)
   assert.match(dialog, />En una semana<\/button>/)
 })
+
+test('los controles comparten un foco accesible y coherente con la identidad visual', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
+
+  assert.match(styles, /:focus-visible/)
+  assert.match(styles, /outline:\s*2px solid #6f9185/)
+  assert.match(styles, /\.task-toggle:focus-visible/)
+  assert.match(styles, /box-shadow:\s*0 0 0 2px var\(--paper\), 0 0 0 4px #6f9185/)
+  assert.doesNotMatch(styles, /outline:\s*none\s*!important/)
+})
+
+test('las tareas completadas mantienen el mismo estado visual en texto, contextos y tarjetas', async () => {
+  const [app, editor, styles] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/components/BlockEditor.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /:class="\{ completed: task\.checked \}"/)
+  assert.match(editor, /:aria-pressed="block\.checked"/)
+  assert.match(styles, /\.block-task\.completed \.block-rendered button/)
+  assert.match(styles, /\.task-card\.completed > div > span button/)
+  assert.match(styles, /\.task-card\s*\{\s*grid-template-columns:\s*24px minmax\(0, 1fr\);/)
+  assert.match(styles, /\.task-card \.reminder-button\s*\{[\s\S]*grid-column:\s*2;/)
+  assert.match(app, /`Diario · \$\{formatReminderDate/)
+})

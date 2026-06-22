@@ -191,6 +191,7 @@ function handleKeydown(block, index, event) {
           v-if="block.type === 'task'"
           class="task-toggle"
           :aria-label="block.checked ? 'Marcar como pendiente' : 'Completar tarea'"
+          :aria-pressed="block.checked"
           @click="emit('update-block', block.id, { checked: !block.checked })"
         >{{ block.checked ? '✓' : '' }}</button>
         <button

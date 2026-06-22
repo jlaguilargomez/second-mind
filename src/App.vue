@@ -354,7 +354,7 @@ onBeforeUnmount(() => {
           <span>◎</span> Seguimiento
           <small>{{ waitingTasks.length }}</small>
         </button>
-        <button @click="showSearch = true"><span>⌕</span> Buscar <kbd>⌘ K</kbd></button>
+        <button @click="openSearch"><span>⌕</span> Buscar <kbd>⌘ K</kbd></button>
       </nav>
 
       <section class="sidebar-section contexts-section">
@@ -414,8 +414,18 @@ onBeforeUnmount(() => {
         </div>
         <div class="top-actions">
           <span class="save-state">{{ syncState }}</span>
-          <button class="icon-button" title="Activar notificaciones" @click="enableNotifications">♢</button>
-          <button class="icon-button" title="Exportar workspace" @click="exportWorkspace">↓</button>
+          <button
+            class="icon-button"
+            aria-label="Activar notificaciones"
+            title="Activar notificaciones"
+            @click="enableNotifications"
+          >♢</button>
+          <button
+            class="icon-button"
+            aria-label="Exportar workspace"
+            title="Exportar workspace"
+            @click="exportWorkspace"
+          >↓</button>
           <button class="primary-button" @click="chooseWorkspace">Conectar carpeta</button>
         </div>
       </header>
@@ -474,15 +484,27 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <div v-if="filteredTasks.length" class="task-list">
-              <article v-for="task in filteredTasks" :key="task.id" class="task-card">
+              <article
+                v-for="task in filteredTasks"
+                :key="task.id"
+                class="task-card"
+                :class="{ completed: task.checked }"
+              >
                 <button
                   class="task-toggle"
                   :aria-label="task.checked ? 'Reabrir tarea' : 'Completar tarea'"
+                  :aria-pressed="task.checked"
                   @click="mind.updateBlock(task.noteId, task.id, { checked: !task.checked })"
                 >{{ task.checked ? '✓' : '' }}</button>
                 <div @click="openTask(task)">
                   <RichText :text="task.content" @context="openContext" @tag="openTag" />
-                  <small>{{ task.noteDate || task.noteTitle }}</small>
+                  <small>
+                    {{
+                      task.noteDate
+                        ? `Diario · ${formatReminderDate(task.noteDate, { short: true })}`
+                        : task.noteTitle
+                    }}
+                  </small>
                 </div>
                 <button class="reminder-button" @click="editReminder(task)">
                   {{ task.reminder ? `◷ ${formatReminderDate(task.reminder)}` : '＋ fecha' }}
@@ -526,7 +548,12 @@ onBeforeUnmount(() => {
             <section class="tracking-section">
               <div class="section-title"><h2>Esperando o delegado</h2><span>{{ waitingTasks.length }}</span></div>
               <article v-for="task in waitingTasks" :key="task.id" class="task-card compact">
-                <button class="task-toggle" @click="mind.updateBlock(task.noteId, task.id, { checked: true })"></button>
+                <button
+                  class="task-toggle"
+                  aria-label="Completar tarea"
+                  :aria-pressed="false"
+                  @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
+                ></button>
                 <div @click="openTask(task)">
                   <RichText :text="task.content" @context="openContext" @tag="openTag" />
                   <small>{{ task.noteDate || task.noteTitle }}</small>
@@ -584,7 +611,12 @@ onBeforeUnmount(() => {
             <section v-if="contextTasks.length" class="context-section">
               <div class="section-title"><h2>Tareas abiertas</h2><span>{{ contextTasks.length }}</span></div>
               <article v-for="task in contextTasks" :key="task.id" class="task-card compact">
-                <button class="task-toggle" @click="mind.updateBlock(task.noteId, task.id, { checked: true })"></button>
+                <button
+                  class="task-toggle"
+                  aria-label="Completar tarea"
+                  :aria-pressed="false"
+                  @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
+                ></button>
                 <div @click="openTask(task)">
                   <RichText :text="task.content" @context="openContext" @tag="openTag" />
                   <small>{{ task.noteDate }}</small>
@@ -744,7 +776,12 @@ onBeforeUnmount(() => {
       @change="mind.importFiles($event.target.files)"
     />
 
-    <button class="floating-import" title="Importar Markdown" @click="importInput?.click()">↥</button>
+    <button
+      class="floating-import"
+      aria-label="Importar Markdown"
+      title="Importar Markdown"
+      @click="importInput?.click()"
+    >↥</button>
 
     <div v-if="conflicts.length" class="conflict-banner">
       Hay {{ conflicts.length }} conflicto(s) conservado(s) para resolver cuando conectemos el servidor.

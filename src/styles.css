@@ -43,6 +43,16 @@ body { margin: 0; min-width: 320px; min-height: 100vh; font-size: 15px; line-hei
 button, input, textarea, select { font: inherit; }
 button { color: inherit; }
 button, select { cursor: pointer; }
+button, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+button:focus, input:focus, textarea:focus, select:focus, [tabindex]:focus { outline: none; }
+:where(button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid #6f9185;
+  outline-offset: 2px;
+}
+button {
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease,
+    box-shadow .15s ease, opacity .15s ease;
+}
 
 .app-shell { display: grid; grid-template-columns: 264px minmax(0, 1fr); min-height: 100vh; }
 .sidebar {
@@ -148,6 +158,10 @@ kbd {
   border: 1.5px solid #8e938e; border-radius: 50%; background: transparent;
   color: white; font-size: 10px; line-height: 1;
 }
+.task-toggle:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px #6f9185;
+}
 .completed .task-toggle, .task-toggle:not(:empty) { border-color: var(--green); background: var(--green); }
 .block-main { position: relative; min-width: 0; }
 .block-rendered {
@@ -163,7 +177,15 @@ kbd {
 }
 .block-heading .block-input, .block-heading .block-rendered { font-family: var(--font-editor); font-size: 27px; font-weight: 650; }
 .block-heading .title-block { display: none !important; }
-.block-task.completed .block-input, .block-task.completed .block-rendered { color: #95938b; text-decoration: line-through; }
+.block-task.completed .block-input,
+.block-task.completed .block-rendered,
+.block-task.completed .block-rendered button {
+  color: #8b8b84;
+  text-decoration: line-through;
+  text-decoration-color: #aaa9a1;
+  text-decoration-thickness: 1.5px;
+}
+.block-task.completed .block-metadata { opacity: .58; }
 .block-metadata { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 0 4px 7px; }
 .block-metadata button, .inline-context, .inline-tag {
   border: 0; border-radius: 5px; padding: 2px 5px; background: transparent; font-size: 9px;
@@ -228,6 +250,15 @@ kbd {
   padding: 14px 15px; border: 1px solid #e1ddd4; border-radius: 10px; background: rgba(255,255,255,.38);
 }
 .task-card > div { cursor: pointer; font-family: var(--font-editor); font-size: 18px; line-height: 1.48; }
+.task-card.completed > div > span,
+.task-card.completed > div > span button {
+  color: #8b8b84;
+  text-decoration: line-through;
+  text-decoration-color: #aaa9a1;
+  text-decoration-thickness: 1.5px;
+}
+.task-card.completed small { color: #929088; }
+.task-card.completed .reminder-button { opacity: .58; }
 .task-card small { display: block; margin-top: 5px; color: #74736c; font-family: var(--font-mono); font-size: 10px; }
 .task-card.compact { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding-inline: 4px; background: transparent; }
 .reminder-button { border: 0; border-radius: 6px; padding: 6px 8px; color: var(--amber); background: #f2e9db; font-size: 10px; }
@@ -333,6 +364,12 @@ kbd {
 .small-modal { padding: 25px; }
 .small-modal h2 { margin: 0 0 20px; font-family: var(--font-editor); font-size: 26px; font-weight: 650; }
 .small-modal input, .small-modal select { width: 100%; border: 1px solid var(--line); border-radius: 7px; outline: 0; padding: 11px; background: white; }
+.small-modal input:focus-visible, .small-modal select:focus-visible,
+.filter-bar select:focus-visible {
+  border-color: #78968b;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(65,104,92,.13);
+}
 .small-modal > div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .small-modal label { display: grid; gap: 7px; color: #74736c; font-size: 11px; }
 .secondary-button, .danger-button { border: 1px solid var(--line); border-radius: 7px; padding: 9px 13px; background: transparent; font-size: 11px; }
@@ -417,6 +454,12 @@ kbd {
   .context-hero { padding: 17px; }
   .context-hero > span { width: 49px; height: 49px; font-size: 23px; }
   .tracking-grid { grid-template-columns: 1fr; }
+  .task-card { grid-template-columns: 24px minmax(0, 1fr); }
+  .task-card .reminder-button {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 2px;
+  }
   .agenda-item { grid-template-columns: 84px minmax(0, 1fr) 22px; }
   .filter-bar select { max-width: 160px; }
   .floating-import { display: none; }
