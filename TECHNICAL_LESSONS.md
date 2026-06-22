@@ -356,3 +356,23 @@ Solución: serializar el estado actual en el momento de exportar, en lugar de co
 - Una migración de almacenamiento local también es una migración de producción.
 - Valida siempre el despliegue real, no solamente el build local.
 
+## 15. Revisión para uso corporativo
+
+La aplicación se endureció para reducir exposición accidental:
+
+- Se eliminaron Google Fonts y todas las solicitudes de recursos de terceros.
+- Se añadió una Content Security Policy restrictiva.
+- Se configuró `no-referrer`.
+- Las actualizaciones de la PWA requieren confirmación del usuario.
+- Las GitHub Actions oficiales están fijadas por SHA.
+- CI ejecuta `npm audit` sobre dependencias de producción.
+- La interfaz informa de que los datos permanecen en el dispositivo salvo exportación o carpeta conectada.
+
+La organización del trabajo también se hizo independiente del rol. En lugar de un “panel de Tech Lead”, la vista **Seguimiento** agrupa:
+
+- Proyectos, equipos y áreas.
+- Personas relacionadas.
+- Tareas delegadas o esperando respuesta.
+- Actividad y compromisos abiertos.
+
+La lección general es que el modelo debe representar responsabilidades y relaciones, no el cargo concreto del usuario. Esto permite reutilizar la misma herramienta para coordinación técnica, gestión de producto, consultoría, investigación o trabajo individual.

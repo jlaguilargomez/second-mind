@@ -23,6 +23,12 @@ import {
 const LEGACY_LOCAL_KEY = 'second-mind-notes-v1'
 const contextPalette = ['sage', 'blue', 'amber', 'violet', 'rose']
 const contextEmojis = ['◈', '●', '◆', '✦', '⬡']
+export const contextTypes = {
+  project: 'Proyecto',
+  person: 'Persona',
+  team: 'Equipo',
+  area: 'Área',
+}
 
 function createStarterNotes() {
   const date = isoDate()
@@ -48,6 +54,7 @@ function createStarterNotes() {
       kind: 'context',
       filename: 'producto.md',
       title: 'producto',
+      contextType: 'project',
       emoji: '◆',
       color: 'violet',
       blocks: [
@@ -135,6 +142,7 @@ export function useSecondMind() {
         noteId: note.id,
         emoji: note.emoji,
         color: note.color,
+        contextType: note.contextType || 'project',
       })
       index.set(key, entry)
     }
@@ -236,7 +244,7 @@ export function useSecondMind() {
     selectedContext.value = null
   }
 
-  async function openContext(name) {
+  async function openContext(name, options = {}) {
     const key = name.toLocaleLowerCase()
     let note = contextNotes.value.find((item) => item.title.toLocaleLowerCase() === key)
     if (!note) {
@@ -246,6 +254,7 @@ export function useSecondMind() {
         kind: 'context',
         filename: `${contextSlug(name) || 'contexto'}.md`,
         title: name,
+        contextType: options.contextType || 'project',
         emoji: contextEmojis[index % contextEmojis.length],
         color: contextPalette[index % contextPalette.length],
         blocks: [
@@ -259,6 +268,14 @@ export function useSecondMind() {
     activeNoteId.value = note.id
     selectedContext.value = name
     currentView.value = 'context'
+  }
+
+  function updateContext(noteId, patch) {
+    const note = notes.value.find((item) => item.id === noteId && item.kind === 'context')
+    if (!note) return
+    const updated = normalizeNote({ ...note, ...patch, markdown: undefined })
+    replaceNote(updated)
+    persistNote(updated)
   }
 
   function updateBlock(noteId, blockId, patch) {
@@ -447,6 +464,7 @@ export function useSecondMind() {
     openDate,
     setView,
     openContext,
+    updateContext,
     updateBlock,
     addBlock,
     removeBlock,

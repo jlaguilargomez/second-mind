@@ -162,7 +162,12 @@ export function serializeNote(note) {
     type: note.kind === 'journal' ? 'journal' : 'context',
     ...(note.date ? { date: note.date } : {}),
     ...(note.kind === 'context'
-      ? { name: note.title, emoji: note.emoji || '◈', color: note.color || 'sage' }
+      ? {
+          name: note.title,
+          contextType: note.contextType || 'project',
+          emoji: note.emoji || '◈',
+          color: note.color || 'sage',
+        }
       : {}),
     version: note.version || 1,
     createdAt: note.createdAt,
@@ -185,6 +190,7 @@ export function normalizeNote(note) {
     title: parsed.title,
     emoji: note.emoji || parsed.attributes.emoji || '◈',
     color: note.color || parsed.attributes.color || 'sage',
+    contextType: note.contextType || parsed.attributes.contextType || 'project',
     blocks: (note.blocks || parsed.blocks).map((block) => ({
       ...block,
       id: block.id || createId(),
@@ -226,6 +232,7 @@ export function contextTemplate(name, options = {}) {
     title: name,
     emoji: options.emoji || '◈',
     color: options.color || 'sage',
+    contextType: options.contextType || 'project',
     blocks: [{ ...createBlock('heading', name), level: 1 }],
   })
   return note.markdown

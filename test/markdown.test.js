@@ -73,3 +73,16 @@ test('clasifica recordatorios vencidos, de hoy y próximos', () => {
   assert.equal(reminderState('2026-06-21T18:00:00Z', now), 'today')
   assert.equal(reminderState('2026-06-22T09:00:00Z', now), 'upcoming')
 })
+
+test('conserva el tipo de contexto en Markdown', () => {
+  const note = normalizeNote({
+    kind: 'context',
+    filename: 'sara.md',
+    title: 'Sara',
+    contextType: 'person',
+    blocks: [],
+  })
+
+  assert.equal(note.contextType, 'person')
+  assert.match(serializeNote(note), /contextType: person/)
+})

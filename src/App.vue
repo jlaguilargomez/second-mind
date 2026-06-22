@@ -1,12 +1,13 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import JSZip from 'jszip'
+import { registerSW } from 'virtual:pwa-register'
 import BlockEditor from './components/BlockEditor.vue'
 import CalendarPanel from './components/CalendarPanel.vue'
 import ReminderDialog from './components/ReminderDialog.vue'
 import RichText from './components/RichText.vue'
 import { isoDate, serializeNote } from './lib/markdown'
-import { useSecondMind } from './composables/useSecondMind'
+import { contextTypes, useSecondMind } from './composables/useSecondMind'
 
 const mind = useSecondMind()
 const {
@@ -31,6 +32,7 @@ const showSearch = ref(false)
 const showContextDialog = ref(false)
 const showMobilePanel = ref(false)
 const newContextName = ref('')
+const newContextType = ref('project')
 const selectedTag = ref(null)
 const taskFilter = ref('open')
 const contextFilter = ref('all')
@@ -38,6 +40,12 @@ const reminderBlock = ref(null)
 const importInput = ref(null)
 const connectionError = ref('')
 const isOnline = ref(navigator.onLine)
+const updateAvailable = ref(false)
+const updateSW = registerSW({
+  onNeedRefresh() {
+    updateAvailable.value = true
+  },
+})
 let notificationTimer
 
 const pageTitle = computed(() => {
@@ -52,6 +60,7 @@ const pageTitle = computed(() => {
   if (currentView.value === 'context') return `@${selectedContext.value}`
   if (currentView.value === 'tasks') return 'Tareas'
   if (currentView.value === 'agenda') return 'Agenda'
+  if (currentView.value === 'tracking') return 'Seguimiento'
   return 'Second Mind'
 })
 
@@ -100,6 +109,26 @@ const contextTags = computed(() => {
   }
   return [...counts.entries()].map(([name, count]) => ({ name, count }))
 })
+const projectContexts = computed(() =>
+  contextIndex.value.filter((context) =>
+    ['project', 'team', 'area'].includes(context.contextType || 'project'),
+  ),
+)
+const peopleContexts = computed(() =>
+  contextIndex.value.filter((context) => context.contextType === 'person'),
+)
+const waitingTasks = computed(() =>
+  tasks.value.filter(
+    (task) =>
+      !task.checked &&
+      (task.tags.some((tag) => ['esperando', 'delegado', 'follow-up'].includes(tag.toLocaleLowerCase())) ||
+        task.contexts.some((name) =>
+          peopleContexts.value.some(
+            (person) => person.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+          ),
+        )),
+  ),
+)
 const searchResults = computed(() => mind.search(searchQuery.value))
 
 function navigate(view) {
@@ -159,8 +188,9 @@ function saveReminder(value) {
 
 async function createContext() {
   if (!newContextName.value.trim()) return
-  await mind.openContext(newContextName.value.trim())
+  await mind.openContext(newContextName.value.trim(), { contextType: newContextType.value })
   newContextName.value = ''
+  newContextType.value = 'project'
   showContextDialog.value = false
 }
 
@@ -266,6 +296,10 @@ onBeforeUnmount(() => {
           <span>◷</span> Agenda
           <small>{{ reminders.length }}</small>
         </button>
+        <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')">
+          <span>◎</span> Seguimiento
+          <small>{{ waitingTasks.length }}</small>
+        </button>
         <button @click="showSearch = true"><span>⌕</span> Buscar <kbd>⌘ K</kbd></button>
       </nav>
 
@@ -303,6 +337,7 @@ onBeforeUnmount(() => {
       </section>
 
       <div class="sidebar-footer">
+        <p class="privacy-note">Los datos permanecen en este dispositivo salvo exportación o carpeta conectada.</p>
         <div class="sync-line">
           <i :class="{ offline: !isOnline }"></i>{{ syncState }}
         </div>
@@ -418,6 +453,52 @@ onBeforeUnmount(() => {
             </div>
           </template>
 
+          <template v-else-if="currentView === 'tracking'">
+            <div class="page-heading">
+              <p class="eyebrow">VISIÓN TRANSVERSAL</p>
+              <h1>Seguimiento</h1>
+              <p>Proyectos, personas y compromisos pendientes en un único lugar.</p>
+            </div>
+
+            <section class="tracking-section">
+              <div class="section-title"><h2>Esperando o delegado</h2><span>{{ waitingTasks.length }}</span></div>
+              <article v-for="task in waitingTasks" :key="task.id" class="task-card compact">
+                <button class="task-toggle" @click="mind.updateBlock(task.noteId, task.id, { checked: true })"></button>
+                <div @click="openTask(task)">
+                  <RichText :text="task.content" @context="openContext" @tag="openTag" />
+                  <small>{{ task.noteDate || task.noteTitle }}</small>
+                </div>
+                <button class="reminder-button" @click="editReminder(task)">◷</button>
+              </article>
+              <p v-if="!waitingTasks.length" class="empty-copy">
+                Usa #esperando, #delegado o relaciona una tarea con una @persona.
+              </p>
+            </section>
+
+            <section class="tracking-section">
+              <div class="section-title"><h2>Proyectos y áreas</h2><span>{{ projectContexts.length }}</span></div>
+              <div class="tracking-grid">
+                <button v-for="context in projectContexts" :key="context.name" @click="openContext(context.name)">
+                  <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
+                  <span><strong>@{{ context.name }}</strong><small>{{ context.openTasks }} tareas · {{ context.count }} menciones</small></span>
+                </button>
+              </div>
+            </section>
+
+            <section class="tracking-section">
+              <div class="section-title"><h2>Personas relacionadas</h2><span>{{ peopleContexts.length }}</span></div>
+              <div class="tracking-grid people">
+                <button v-for="person in peopleContexts" :key="person.name" @click="openContext(person.name)">
+                  <b class="context-dot color-blue">{{ person.emoji || '●' }}</b>
+                  <span><strong>@{{ person.name }}</strong><small>{{ person.openTasks }} compromisos abiertos</small></span>
+                </button>
+              </div>
+              <p v-if="!peopleContexts.length" class="empty-copy">
+                Crea contextos de tipo Persona para reunir conversaciones, acuerdos y seguimientos.
+              </p>
+            </section>
+          </template>
+
           <template v-else-if="currentView === 'context' && activeContext">
             <div class="context-hero" :class="`context-${activeContext.color || 'sage'}`">
               <span>{{ activeContext.emoji || '◈' }}</span>
@@ -425,6 +506,15 @@ onBeforeUnmount(() => {
                 <p class="eyebrow">CONTEXTO</p>
                 <h1>@{{ activeContext.name }}</h1>
                 <p>{{ activeContext.count }} menciones · {{ activeContext.openTasks }} tareas abiertas</p>
+                <label class="context-type-control">
+                  Tipo
+                  <select
+                    :value="activeContext.contextType || 'project'"
+                    @change="mind.updateContext(activeContext.noteId, { contextType: $event.target.value })"
+                  >
+                    <option v-for="(label, value) in contextTypes" :key="value" :value="value">{{ label }}</option>
+                  </select>
+                </label>
               </div>
             </div>
 
@@ -496,7 +586,7 @@ onBeforeUnmount(() => {
       <button :class="{ active: currentView === 'journal' }" @click="mind.openDate(isoDate())"><span>✎</span>Hoy</button>
       <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')"><span>✓</span>Tareas</button>
       <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')"><span>◷</span>Agenda</button>
-      <button @click="showMobilePanel = !showMobilePanel"><span>◫</span>Más</button>
+      <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')"><span>◎</span>Seguimiento</button>
     </nav>
 
     <div v-if="showSearch" class="modal-backdrop" @click.self="showSearch = false">
@@ -534,6 +624,12 @@ onBeforeUnmount(() => {
         <p class="eyebrow">NUEVO CONTEXTO</p>
         <h2>Crea un lugar para reunir trabajo</h2>
         <input v-model="newContextName" autofocus placeholder="motor, hogar, Sara…" />
+        <label>
+          Tipo de contexto
+          <select v-model="newContextType">
+            <option v-for="(label, value) in contextTypes" :key="value" :value="value">{{ label }}</option>
+          </select>
+        </label>
         <div>
           <button type="button" class="secondary-button" @click="showContextDialog = false">Cancelar</button>
           <button class="primary-button">Crear @contexto</button>
@@ -560,6 +656,12 @@ onBeforeUnmount(() => {
 
     <div v-if="conflicts.length" class="conflict-banner">
       Hay {{ conflicts.length }} conflicto(s) conservado(s) para resolver cuando conectemos el servidor.
+    </div>
+
+    <div v-if="updateAvailable" class="update-banner">
+      <span>Hay una nueva versión disponible. Tus datos locales no se enviarán durante la actualización.</span>
+      <button @click="updateSW(true)">Actualizar</button>
+      <button @click="updateAvailable = false">Ahora no</button>
     </div>
   </div>
 </template>

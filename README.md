@@ -10,6 +10,8 @@ Una aplicación local-first inspirada en los diarios enlazados para registrar tr
 
 [Arquitectura y lecciones aprendidas](./TECHNICAL_LESSONS.md)
 
+[Seguridad y privacidad](./SECURITY.md)
+
 ## Desarrollo
 
 ```bash
@@ -28,6 +30,8 @@ mi-segundo-cerebro/
 ```
 
 Los `@contextos` agrupan proyectos o personas y las `#etiquetas` clasifican temas transversales. Los enlaces heredados `[[Producto]]` continúan funcionando como contextos.
+
+Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área. La vista **Seguimiento** reúne proyectos activos, personas relacionadas y tareas delegadas o pendientes de respuesta sin asumir un cargo concreto.
 
 Cada bloque conserva un identificador estable y sus propiedades dentro del propio Markdown:
 
