@@ -17,6 +17,7 @@ import {
   serializeContextShare,
   serializeJournalShare,
   serializeNote,
+  sortContextBlocksByDate,
   titleFromMarkdown,
 } from '../src/lib/markdown.js'
 
@@ -260,4 +261,31 @@ test('agrupa por fecha el Markdown compartido de un contexto y conserva la jerar
   assert.match(markdown, /  - \[ \] Validar solución/)
   assert.match(markdown, /## 2026-06-21/)
   assert.equal((markdown.match(/## 2026-06-22/g) || []).length, 1)
+})
+
+test('ordena la actividad de contexto por fecha descendente sin separar subitems', () => {
+  const blocks = [
+    { ...createBlock('log', 'Entrada antigua'), noteDate: '2026-06-19' },
+    { ...createBlock('log', 'Padre reciente'), noteDate: '2026-06-22' },
+    {
+      ...createBlock('log', 'Subitem reciente'),
+      noteDate: '2026-06-22',
+      contextIndent: 1,
+    },
+    { ...createBlock('log', 'Entrada intermedia'), noteDate: '2026-06-21' },
+    { ...createBlock('text', 'Descripción sin fecha'), noteDate: null },
+  ]
+
+  const sorted = sortContextBlocksByDate(blocks)
+
+  assert.deepEqual(
+    sorted.map((block) => block.content),
+    [
+      'Padre reciente',
+      'Subitem reciente',
+      'Entrada intermedia',
+      'Entrada antigua',
+      'Descripción sin fecha',
+    ],
+  )
 })

@@ -214,6 +214,17 @@ export function projectContextBlocks(blocks = [], name = '') {
     }))
 }
 
+export function sortContextBlocksByDate(blocks = []) {
+  return blocks
+    .map((block, originalIndex) => ({ block, originalIndex }))
+    .sort(
+      (a, b) =>
+        (b.block.noteDate || '').localeCompare(a.block.noteDate || '') ||
+        a.originalIndex - b.originalIndex,
+    )
+    .map(({ block }) => block)
+}
+
 export function parseMarkdown(markdown = '', options = {}) {
   const { attributes, body } = parseFrontmatter(markdown)
   const lines = body.replace(/\r/g, '').split('\n')

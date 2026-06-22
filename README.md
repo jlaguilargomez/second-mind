@@ -39,6 +39,8 @@ Desde un día o una página de contexto se puede copiar la sección completa com
 
 La vista de tareas admite filtros combinables por estado, contexto, prioridad y etiqueta, además de una acción para restablecer la selección.
 
+La actividad de cada contexto se presenta cronológicamente, con los diarios más recientes primero y preservando la jerarquía interna de sus bloques.
+
 Cada bloque conserva un identificador estable y sus propiedades dentro del propio Markdown:
 
 ```md

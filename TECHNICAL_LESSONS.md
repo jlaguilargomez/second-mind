@@ -537,3 +537,11 @@ El resultado es la intersección de todos los criterios activos. Los filtros no 
 En móvil, los desplegables pasan de tres columnas a una sola para mantener objetivos táctiles amplios y evitar truncar nombres de contextos.
 
 La lección es que los filtros combinables deben ser visibles, simétricos y reversibles. Si un criterio solo puede activarse desde otra pantalla, se convierte en estado oculto y aumenta la carga cognitiva.
+
+## 22. Orden temporal estable en vistas derivadas
+
+Una página de contexto combina bloques procedentes de varios diarios. Conservar únicamente el orden de almacenamiento hacía que una entrada antigua pudiera aparecer antes que otra reciente, aunque dentro de cada nota la jerarquía fuese correcta.
+
+La proyección se ordena ahora por `noteDate` descendente. Cuando varios bloques comparten fecha, se mantiene su posición original mediante un orden estable. Esto conserva juntos encabezamientos lógicos, padres y subitems. Los bloques sin fecha —por ejemplo, contenido propio de una nota de contexto— quedan después de la actividad fechada.
+
+La lección es que una vista agregada necesita declarar su criterio de orden explícitamente. El orden accidental de la colección de origen no constituye una semántica temporal fiable.

@@ -13,6 +13,7 @@ import {
   reminderDate,
   reminderState,
   serializeNote,
+  sortContextBlocksByDate,
 } from '../lib/markdown'
 import { LocalRepository } from '../repositories/LocalRepository'
 import {
@@ -430,10 +431,12 @@ export function useSecondMind() {
   }
 
   function contextBlocks(name) {
-    return notes.value.flatMap((note) =>
-      projectContextBlocks(
-        allBlocks.value.filter((block) => block.noteId === note.id),
-        name,
+    return sortContextBlocksByDate(
+      notes.value.flatMap((note) =>
+        projectContextBlocks(
+          allBlocks.value.filter((block) => block.noteId === note.id),
+          name,
+        ),
       ),
     )
   }
