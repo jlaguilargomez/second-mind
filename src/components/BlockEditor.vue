@@ -25,6 +25,12 @@ const inputRefs = new Map()
 
 const contextNames = computed(() => props.contexts.map((item) => item.name))
 const tagNames = computed(() => props.tags.map((item) => item.name))
+const blockTypes = [
+  { value: 'log', label: 'Log', icon: '•' },
+  { value: 'text', label: 'Texto', icon: '¶' },
+  { value: 'task', label: 'Tarea', icon: '○' },
+  { value: 'heading', label: 'Título', icon: 'H' },
+]
 
 function registerInput(id, element) {
   if (element) inputRefs.set(id, element)
@@ -80,6 +86,20 @@ function handleInput(block, event) {
   }
 }
 
+function addBlockAfter(blockId, type = 'log') {
+  const existingIds = new Set(props.note.blocks.map((block) => block.id))
+  emit('add-block', blockId, type)
+  nextTick(() => {
+    const newBlock = props.note.blocks.find((block) => !existingIds.has(block.id))
+    if (newBlock) focusBlock(newBlock.id)
+  })
+}
+
+function changeType(block, type) {
+  emit('change-type', block.id, type)
+  focusBlock(block.id)
+}
+
 function applySuggestion(block, option) {
   const marker = activeSuggestion.value.type === 'context' ? '@' : '#'
   const pattern = new RegExp(`${marker}${activeSuggestion.value.query}$`)
@@ -98,12 +118,8 @@ function handleKeydown(block, index, event) {
     event.preventDefault()
     activeSuggestion.value = null
     const type = block.type === 'heading' ? 'log' : block.type
-    const newBlock = emit('add-block', block.id, type)
-    nextTick(() => {
-      const next = props.note.blocks[index + 1]
-      if (next) inputRefs.get(next.id)?.focus()
-    })
-    return newBlock
+    addBlockAfter(block.id, type)
+    return
   }
   if (event.key === 'Backspace' && !block.content && index > 0) {
     event.preventDefault()
@@ -122,7 +138,13 @@ function handleKeydown(block, index, event) {
       :key="block.id"
       :data-block-id="block.id"
       class="block-row"
-      :class="[`block-${block.type}`, { completed: block.checked }]"
+      :class="[
+        `block-${block.type}`,
+        {
+          completed: block.checked,
+          'document-title-row': block.type === 'heading' && block.level === 1,
+        },
+      ]"
     >
       <div class="block-gutter">
         <button
@@ -131,8 +153,14 @@ function handleKeydown(block, index, event) {
           :aria-label="block.checked ? 'Marcar como pendiente' : 'Completar tarea'"
           @click="emit('update-block', block.id, { checked: !block.checked })"
         >{{ block.checked ? '✓' : '' }}</button>
-        <span v-else-if="block.type === 'log'" class="block-bullet">•</span>
-        <button v-else class="block-handle" title="Cambiar tipo">⋮</button>
+        <button
+          v-else
+          class="block-kind-button"
+          :title="`Editar ${blockTypes.find((type) => type.value === block.type)?.label || 'bloque'}`"
+          @click="focusBlock(block.id)"
+        >
+          {{ blockTypes.find((type) => type.value === block.type)?.icon || '•' }}
+        </button>
       </div>
 
       <div class="block-main">
@@ -196,30 +224,45 @@ function handleKeydown(block, index, event) {
             <span>＋</span>Crear @{{ activeSuggestion.query }}
           </button>
         </div>
-      </div>
 
-      <div class="block-actions">
-        <button
-          v-if="block.type === 'task'"
-          title="Añadir recordatorio"
-          @click="emit('edit-reminder', block)"
-        >◷</button>
-        <select
-          :value="block.type"
-          aria-label="Tipo de bloque"
-          @change="emit('change-type', block.id, $event.target.value)"
-        >
-          <option value="log">Log</option>
-          <option value="text">Texto</option>
-          <option value="task">Tarea</option>
-          <option value="heading">Título</option>
-        </select>
-        <button
-          v-if="block.type !== 'heading' || block.level !== 1"
-          title="Eliminar bloque"
-          @click="emit('remove-block', block.id)"
-        >×</button>
+        <div v-if="focusedBlockId === block.id" class="block-toolbar" @mousedown.prevent>
+          <span class="toolbar-label">Tipo</span>
+          <div class="type-options" role="group" aria-label="Tipo de entrada">
+            <button
+              v-for="type in blockTypes"
+              :key="type.value"
+              :class="{ active: block.type === type.value }"
+              :aria-pressed="block.type === type.value"
+              :title="`Convertir en ${type.label.toLocaleLowerCase()}`"
+              @click="changeType(block, type.value)"
+            >
+              <span>{{ type.icon }}</span>{{ type.label }}
+            </button>
+          </div>
+          <div class="toolbar-actions">
+            <button
+              v-if="block.type === 'task'"
+              title="Añadir recordatorio"
+              @click="emit('edit-reminder', block)"
+            >◷ <span>Fecha</span></button>
+            <button
+              v-if="block.type !== 'heading' || block.level !== 1"
+              class="remove-block-button"
+              title="Eliminar entrada"
+              @click="emit('remove-block', block.id)"
+            >× <span>Eliminar</span></button>
+          </div>
+        </div>
       </div>
     </div>
+
+    <button
+      class="add-entry-button"
+      @click="addBlockAfter(note.blocks.at(-1)?.id, 'log')"
+    >
+      <span>＋</span>
+      <strong>Añadir entrada</strong>
+      <small>o pulsa Intro al escribir</small>
+    </button>
   </div>
 </template>

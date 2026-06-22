@@ -321,6 +321,14 @@ Durante el debounce, el modelo de bloques puede estar más actualizado que la pr
 
 Solución: serializar el estado actual en el momento de exportar, en lugar de confiar en una cadena previamente calculada.
 
+### Acciones ocultas en editores por bloques
+
+Ocultar el selector de tipo hasta que el puntero pasa sobre una fila ahorra espacio, pero reduce mucho la descubribilidad y deja a los dispositivos táctiles sin una ruta clara.
+
+Solución: mostrar una barra contextual al editar con opciones explícitas para log, texto, tarea y título. La misma barra reúne las acciones relacionadas con el bloque y se adapta a una cuadrícula táctil en móvil.
+
+Para mantener la escritura fluida, `Intro` crea un bloque inmediatamente después, conserva el tipo salvo después de un título y mueve el foco al nuevo bloque. Un botón persistente al final del diario ofrece la alternativa visible para quien todavía no conoce el atajo.
+
 ## 12. Deuda técnica consciente
 
 - El editor por bloques es propio y sencillo; no cubre todavía selección múltiple, drag and drop, undo global ni pegado estructurado.
