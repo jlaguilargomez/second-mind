@@ -23,7 +23,10 @@ test('Intro crea y enfoca el bloque siguiente salvo cuando se solicita un salto 
   )
 
   assert.match(editor, /event\.key === 'Enter' && !event\.shiftKey/)
-  assert.match(editor, /addBlockAfter\(block\.id, type, after\)/)
+  assert.match(
+    editor,
+    /addBlockAfter\(block\.id, type, after, \{ indent: block\.indent \|\| 0 \}\)/,
+  )
   assert.match(editor, /if \(newBlock\) focusBlock\(newBlock\.id\)/)
 })
 
@@ -72,4 +75,21 @@ test('los bloques heredados muestran una jerarquía visual discreta', async () =
   assert.match(editor, /'section-child': block\.type !== 'heading'/)
   assert.match(styles, /\.section-child\s*\{[\s\S]*border-left:/)
   assert.match(styles, /\.block-heading \.block-kind-button\s*\{\s*opacity:\s*0;/)
+})
+
+test('Tab y Shift Tab crean y reducen niveles de subitems', async () => {
+  const [editor, styles] = await Promise.all([
+    readFile(new URL('../src/components/BlockEditor.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(editor, /event\.key === 'Tab'/)
+  assert.match(editor, /event\.shiftKey \? -1 : 1/)
+  assert.match(editor, /indentableTypes = new Set\(\['log', 'task'\]\)/)
+  assert.match(editor, /maximumIndent = Math\.min\(\(previous\.indent \|\| 0\) \+ 1, 6\)/)
+  assert.match(editor, /addBlockAfter\(block\.id, type, after, \{ indent: block\.indent \|\| 0 \}\)/)
+  assert.match(editor, /Crear subitem \(Tab\)/)
+  assert.match(editor, /Reducir nivel \(Shift \+ Tab\)/)
+  assert.match(styles, /--indent-level/)
+  assert.match(styles, /\.nested-block:not\(\.section-child\)/)
 })

@@ -1,4 +1,4 @@
-const PROPERTY_PATTERN = /^\s{2}([\w-]+)::\s*(.*)$/
+const PROPERTY_PATTERN = /^\s{2,}([\w-]+)::\s*(.*)$/
 const FRONTMATTER_PATTERN = /^---\n([\s\S]*?)\n---\n?/
 
 export function createId() {
@@ -98,6 +98,7 @@ export function createBlock(type = 'log', content = '') {
     id: createId(),
     type,
     content,
+    indent: 0,
     checked: false,
     reminder: null,
     createdAt: new Date().toISOString(),
@@ -122,10 +123,21 @@ function blockFromLine(line) {
     const content = cleanHeadingContent(line.replace(/^#{1,3}\s+/, ''))
     return { ...createBlock('heading', content), level }
   }
-  const task = line.match(/^\s*-\s+\[([ xX])\]\s*(.*)$/)
-  if (task) return { ...createBlock('task', task[2]), checked: task[1].toLowerCase() === 'x' }
-  const log = line.match(/^\s*-\s+(.*)$/)
-  if (log) return createBlock('log', log[1])
+  const task = line.match(/^(\s*)-\s+\[([ xX])\]\s*(.*)$/)
+  if (task) {
+    return {
+      ...createBlock('task', task[3]),
+      checked: task[2].toLowerCase() === 'x',
+      indent: Math.min(Math.floor(task[1].length / 2), 6),
+    }
+  }
+  const log = line.match(/^(\s*)-\s+(.*)$/)
+  if (log) {
+    return {
+      ...createBlock('log', log[2]),
+      indent: Math.min(Math.floor(log[1].length / 2), 6),
+    }
+  }
   return createBlock('text', line)
 }
 
@@ -200,9 +212,12 @@ export function parseMarkdown(markdown = '', options = {}) {
 
 export function serializeBlock(block) {
   let line = block.content
+  const indentation = '  '.repeat(Math.min(Math.max(block.indent || 0, 0), 6))
   if (block.type === 'heading') line = `${'#'.repeat(block.level || 2)} ${block.content}`
-  if (block.type === 'log') line = `- ${block.content}`
-  if (block.type === 'task') line = `- [${block.checked ? 'x' : ' '}] ${block.content}`
+  if (block.type === 'log') line = `${indentation}- ${block.content}`
+  if (block.type === 'task') {
+    line = `${indentation}- [${block.checked ? 'x' : ' '}] ${block.content}`
+  }
 
   const properties = [
     `  id:: ${block.id || createId()}`,
@@ -254,6 +269,10 @@ export function normalizeNote(note) {
       (note.blocks || parsed.blocks).map((block) => ({
         ...block,
         content: block.type === 'heading' ? cleanHeadingContent(block.content) : block.content,
+        indent:
+          ['log', 'task'].includes(block.type)
+            ? Math.min(Math.max(Number(block.indent) || 0, 0), 6)
+            : 0,
         reminder: reminderDate(block.reminder),
         id: block.id || createId(),
         createdAt: block.createdAt || now,

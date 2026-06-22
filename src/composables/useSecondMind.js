@@ -301,10 +301,10 @@ export function useSecondMind() {
     persistNote(updated)
   }
 
-  function addBlock(noteId, afterBlockId, type = 'log', content = '') {
+  function addBlock(noteId, afterBlockId, type = 'log', content = '', options = {}) {
     const note = notes.value.find((item) => item.id === noteId)
     if (!note) return null
-    const block = createBlock(type, content)
+    const block = { ...createBlock(type, content), ...options }
     const index = note.blocks.findIndex((item) => item.id === afterBlockId)
     const blocks = [...note.blocks]
     blocks.splice(index < 0 ? blocks.length : index + 1, 0, block)

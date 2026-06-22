@@ -377,6 +377,20 @@ El contexto de una sección se deriva por estructura: los bloques bajo `@motor` 
 
 La herencia se mantiene como estado derivado del orden de bloques; no se inserta `@motor` repetidamente en cada texto ni se altera innecesariamente el Markdown del usuario. Los índices de contexto consumen `block.contexts`, mientras que la interfaz sigue mostrando el contenido original una sola vez.
 
+### Subitems portables mediante indentación Markdown
+
+La jerarquía entre elementos se guarda en el propio Markdown:
+
+```md
+- Elemento principal
+  - Subitem
+    - [ ] Tarea anidada
+```
+
+Cada dos espacios representan un nivel. `Tab` aumenta el nivel y `Shift + Tab` lo reduce; `Intro` conserva el nivel actual. Para evitar árboles inválidos, un bloque solo puede situarse como máximo un nivel por debajo del elemento anterior y se limita la profundidad a seis niveles.
+
+En una entrada vacía, Retroceso reduce primero el nivel antes de eliminar el bloque. Esta interacción permite corregir rápidamente una tabulación accidental y coincide con el comportamiento esperado en editores de listas.
+
 ## 12. Deuda técnica consciente
 
 - El editor por bloques es propio y sencillo; no cubre todavía selección múltiple, drag and drop, undo global ni pegado estructurado.

@@ -32,6 +32,7 @@ const blockTypes = [
   { value: 'task', label: 'Tarea', icon: '○' },
   { value: 'heading', label: 'Título', icon: 'H' },
 ]
+const indentableTypes = new Set(['log', 'task'])
 
 function registerInput(id, element) {
   if (element) inputRefs.set(id, element)
@@ -90,9 +91,9 @@ function handleInput(block, event) {
   activeSuggestionIndex.value = 0
 }
 
-function addBlockAfter(blockId, type = 'log', content = '') {
+function addBlockAfter(blockId, type = 'log', content = '', options = {}) {
   const existingIds = new Set(props.note.blocks.map((block) => block.id))
-  emit('add-block', blockId, type, content)
+  emit('add-block', blockId, type, content, options)
   nextTick(() => {
     const newBlock = props.note.blocks.find((block) => !existingIds.has(block.id))
     if (newBlock) focusBlock(newBlock.id)
@@ -102,6 +103,21 @@ function addBlockAfter(blockId, type = 'log', content = '') {
 function changeType(block, type) {
   emit('change-type', block.id, type)
   focusBlock(block.id)
+}
+
+function changeIndent(block, index, direction) {
+  if (!indentableTypes.has(block.type)) return
+  const currentIndent = block.indent || 0
+  if (direction < 0) {
+    emit('update-block', block.id, { indent: Math.max(currentIndent - 1, 0) })
+    return
+  }
+  const previous = props.note.blocks[index - 1]
+  if (!previous || !indentableTypes.has(previous.type)) return
+  const maximumIndent = Math.min((previous.indent || 0) + 1, 6)
+  emit('update-block', block.id, {
+    indent: Math.min(currentIndent + 1, maximumIndent),
+  })
 }
 
 function applySuggestion(block, option) {
@@ -149,6 +165,13 @@ function handleKeydown(block, index, event) {
     activeSuggestion.value = null
     return
   }
+  if (event.key === 'Tab' && indentableTypes.has(block.type)) {
+    event.preventDefault()
+    activeSuggestion.value = null
+    changeIndent(block, index, event.shiftKey ? -1 : 1)
+    focusBlock(block.id)
+    return
+  }
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
     activeSuggestion.value = null
@@ -158,11 +181,16 @@ function handleKeydown(block, index, event) {
     const before = block.content.slice(0, start)
     const after = block.content.slice(end)
     emit('update-block', block.id, { content: before })
-    addBlockAfter(block.id, type, after)
+    addBlockAfter(block.id, type, after, { indent: block.indent || 0 })
     return
   }
   if (event.key === 'Backspace' && !block.content && index > 0) {
     event.preventDefault()
+    if (block.indent > 0) {
+      changeIndent(block, index, -1)
+      focusBlock(block.id)
+      return
+    }
     const previous = props.note.blocks[index - 1]
     emit('remove-block', block.id)
     focusBlock(previous.id)
@@ -178,12 +206,14 @@ function handleKeydown(block, index, event) {
       :key="block.id"
       :data-block-id="block.id"
       class="block-row"
+      :style="{ '--indent-level': Math.min(block.indent || 0, 6) }"
       :class="[
         `block-${block.type}`,
         {
           completed: block.checked,
           'document-title-row': block.type === 'heading' && block.level === 1,
           'section-child': block.type !== 'heading' && block.inheritedContexts?.length,
+          'nested-block': indentableTypes.has(block.type) && block.indent > 0,
         },
       ]"
     >
@@ -283,6 +313,17 @@ function handleKeydown(block, index, event) {
             </button>
           </div>
           <div class="toolbar-actions">
+            <button
+              v-if="indentableTypes.has(block.type)"
+              :disabled="!block.indent"
+              title="Reducir nivel (Shift + Tab)"
+              @click="changeIndent(block, index, -1)"
+            >← <span>Nivel</span></button>
+            <button
+              v-if="indentableTypes.has(block.type)"
+              title="Crear subitem (Tab)"
+              @click="changeIndent(block, index, 1)"
+            >→ <span>Subitem</span></button>
             <button
               v-if="block.type === 'task'"
               title="Añadir recordatorio"

@@ -208,8 +208,8 @@ function updateActiveBlock(blockId, patch) {
   mind.updateBlock(activeNote.value.id, blockId, patch)
 }
 
-function addActiveBlock(afterBlockId, type, content = '') {
-  return mind.addBlock(activeNote.value.id, afterBlockId, type, content)
+function addActiveBlock(afterBlockId, type, content = '', options = {}) {
+  return mind.addBlock(activeNote.value.id, afterBlockId, type, content, options)
 }
 
 function removeActiveBlock(blockId) {

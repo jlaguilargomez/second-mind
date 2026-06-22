@@ -143,12 +143,18 @@ kbd {
 .block-editor { display: flex; flex-direction: column; gap: 1px; }
 .block-row {
   position: relative; display: grid; grid-template-columns: 29px minmax(0, 1fr);
-  align-items: start; min-height: 38px; border-radius: 8px; padding: 3px 4px;
+  align-items: start; min-height: 38px; margin-left: calc(var(--indent-level, 0) * 28px);
+  border-radius: 8px; padding: 3px 4px;
 }
 .block-row:hover { background: rgba(232,228,218,.36); }
 .document-title-row { display: none; }
 .section-child {
-  margin-left: 15px;
+  margin-left: calc((var(--indent-level, 0) * 28px) + 15px);
+  padding-left: 7px;
+  border-left: 1px solid #ded8cd;
+  border-radius: 0 8px 8px 0;
+}
+.nested-block:not(.section-child) {
   padding-left: 7px;
   border-left: 1px solid #ded8cd;
   border-radius: 0 8px 8px 0;
@@ -230,6 +236,7 @@ kbd {
 .type-options button > span { min-width: 11px; font-size: 12px; text-align: center; }
 .toolbar-actions { display: flex; gap: 2px; margin-left: auto; padding-left: 6px; border-left: 1px solid var(--line); }
 .toolbar-actions .remove-block-button { color: #8b625c; }
+.toolbar-actions button:disabled { opacity: .35; cursor: default; }
 .add-entry-button {
   display: flex; align-items: center; gap: 9px; width: calc(100% - 33px); margin: 15px 0 0 33px;
   border: 1px dashed #d5d0c6; border-radius: 9px; padding: 10px 13px; color: #74736c;
@@ -427,7 +434,11 @@ kbd {
   .page-heading h1, .context-hero h1 { font-size: clamp(30px, 9vw, 38px); line-height: 1.08; }
   .page-heading > p:last-child, .context-hero p:last-child { font-size: 13px; }
   .block-row { grid-template-columns: 27px minmax(0, 1fr); padding-block: 5px; }
-  .section-child { margin-left: 8px; padding-left: 4px; }
+  .block-row { margin-left: calc(var(--indent-level, 0) * 20px); }
+  .section-child {
+    margin-left: calc((var(--indent-level, 0) * 20px) + 8px);
+    padding-left: 4px;
+  }
   .block-input, .block-rendered { font-size: 18px; line-height: 1.55; }
   .block-heading .block-input, .block-heading .block-rendered { font-size: 24px; }
   .task-toggle { width: 20px; height: 20px; }

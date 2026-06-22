@@ -4,6 +4,7 @@ import {
   applySectionContexts,
   cleanHeadingContent,
   contextSlug,
+  createBlock,
   dailyTemplate,
   extractContexts,
   extractTags,
@@ -131,4 +132,30 @@ test('respeta niveles de encabezado al calcular contextos anidados', () => {
 
   assert.deepEqual(blocks[2].contexts, ['motor', 'backend'])
   assert.deepEqual(blocks[4].contexts, ['hogar'])
+})
+
+test('importa y exporta subitems conservando su nivel Markdown', () => {
+  const markdown = `- Elemento principal
+  - Subitem
+    - [ ] Tarea anidada`
+  const parsed = parseMarkdown(markdown)
+
+  assert.equal(parsed.blocks[0].indent, 0)
+  assert.equal(parsed.blocks[1].indent, 1)
+  assert.equal(parsed.blocks[2].indent, 2)
+
+  const note = normalizeNote({ kind: 'journal', filename: '2026-06-22.md', markdown })
+  const serialized = serializeNote(note)
+  assert.match(serialized, /^  - Subitem$/m)
+  assert.match(serialized, /^    - \[ \] Tarea anidada$/m)
+})
+
+test('limita la indentación persistida a seis niveles', () => {
+  const note = normalizeNote({
+    kind: 'journal',
+    blocks: [{ ...createBlock('log', 'Profundo'), indent: 99 }],
+  })
+
+  assert.equal(note.blocks[0].indent, 6)
+  assert.match(serializeNote(note), /^ {12}- Profundo$/m)
 })
