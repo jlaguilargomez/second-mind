@@ -98,3 +98,12 @@ test('las tareas permiten combinar filtros de contexto, prioridad y etiqueta', a
   assert.match(styles, /\.task-filter-selects/)
   assert.match(styles, /grid-template-columns:\s*repeat\(3,/)
 })
+
+test('contextos y etiquetas desplazan su contenido sin invadir el pie lateral', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
+
+  assert.match(styles, /\.contexts-section\s*\{[\s\S]*overflow-y:\s*auto/)
+  assert.match(styles, /\.tags-section\s*\{[\s\S]*flex:\s*1 1 auto;[\s\S]*overflow-y:\s*auto/)
+  assert.match(styles, /\.sidebar-footer\s*\{[\s\S]*flex:\s*0 0 auto;/)
+  assert.match(styles, /overscroll-behavior:\s*contain/)
+})

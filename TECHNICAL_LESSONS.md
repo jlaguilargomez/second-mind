@@ -545,3 +545,11 @@ Una página de contexto combina bloques procedentes de varios diarios. Conservar
 La proyección se ordena ahora por `noteDate` descendente. Cuando varios bloques comparten fecha, se mantiene su posición original mediante un orden estable. Esto conserva juntos encabezamientos lógicos, padres y subitems. Los bloques sin fecha —por ejemplo, contenido propio de una nota de contexto— quedan después de la actividad fechada.
 
 La lección es que una vista agregada necesita declarar su criterio de orden explícitamente. El orden accidental de la colección de origen no constituye una semántica temporal fiable.
+
+## 23. Scroll dentro de layouts flexibles
+
+El lateral combina navegación fija, colecciones variables y un pie persistente. Contextos tenía una altura máxima y `overflow`, pero Etiquetas crecía con su contenido y terminaba dibujándose bajo el pie.
+
+Ambas colecciones son ahora elementos flexibles con `min-height: 0` y desplazamiento vertical propio. El pie usa `flex: 0 0 auto`, por lo que conserva siempre su espacio y no puede ser comprimido por las listas. `overscroll-behavior: contain` evita además que alcanzar el final de una colección desplace accidentalmente la página principal.
+
+La lección es que `overflow: auto` no basta dentro de un contenedor flex: el elemento desplazable necesita poder encogerse, y los elementos persistentes deben declarar explícitamente que no deben hacerlo.

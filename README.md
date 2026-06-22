@@ -41,6 +41,8 @@ La vista de tareas admite filtros combinables por estado, contexto, prioridad y 
 
 La actividad de cada contexto se presenta cronológicamente, con los diarios más recientes primero y preservando la jerarquía interna de sus bloques.
 
+Las listas de contextos y etiquetas tienen desplazamiento independiente en el lateral, manteniendo siempre accesible la información de almacenamiento y sincronización.
+
 Cada bloque conserva un identificador estable y sus propiedades dentro del propio Markdown:
 
 ```md
