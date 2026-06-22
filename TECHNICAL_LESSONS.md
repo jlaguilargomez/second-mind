@@ -361,6 +361,22 @@ No debe solucionarse ocultando siempre el foco. La aplicación define un estilo 
 
 Esto mantiene la orientación del usuario de teclado sin introducir ruido visual después de interacciones ordinarias con ratón o pantalla táctil.
 
+### Importar jerarquía semántica desde Reflect
+
+Los Markdown exportados por Reflect pueden utilizar encabezados como:
+
+```md
+## **🏎️** @motor
+- Preparar el nuevo swagger
+- Revisar los mapeos
+```
+
+Los asteriscos son énfasis decorativo, no parte del nombre visible. Durante la normalización se eliminan únicamente del contenido de los encabezados.
+
+El contexto de una sección se deriva por estructura: los bloques bajo `@motor` heredan ese contexto hasta encontrar otro encabezado del mismo nivel o superior. Los encabezados anidados acumulan contextos de sus padres.
+
+La herencia se mantiene como estado derivado del orden de bloques; no se inserta `@motor` repetidamente en cada texto ni se altera innecesariamente el Markdown del usuario. Los índices de contexto consumen `block.contexts`, mientras que la interfaz sigue mostrando el contenido original una sola vez.
+
 ## 12. Deuda técnica consciente
 
 - El editor por bloques es propio y sencillo; no cubre todavía selección múltiple, drag and drop, undo global ni pegado estructurado.

@@ -1,10 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  applySectionContexts,
+  cleanHeadingContent,
   contextSlug,
   dailyTemplate,
   extractContexts,
   extractTags,
+  headingEmoji,
   normalizeNote,
   parseMarkdown,
   reminderDate,
@@ -93,4 +96,39 @@ test('conserva el tipo de contexto en Markdown', () => {
 
   assert.equal(note.contextType, 'person')
   assert.match(serializeNote(note), /contextType: person/)
+})
+
+test('limpia el énfasis decorativo de encabezados exportados por Reflect', () => {
+  assert.equal(cleanHeadingContent('**🏎️** @motor'), '🏎️ @motor')
+  assert.equal(cleanHeadingContent('__🏠__ @hogar'), '🏠 @hogar')
+
+  const parsed = parseMarkdown('## **🏎️** @motor\n- Trabajo en curso')
+  assert.equal(parsed.blocks[0].content, '🏎️ @motor')
+  assert.doesNotMatch(serializeNote(normalizeNote({ markdown: '## **🏎️** @motor' })), /\*\*/)
+  assert.equal(headingEmoji('🏎️ @motor'), '🏎️')
+})
+
+test('hereda el contexto del encabezado hasta la siguiente sección', () => {
+  const parsed = parseMarkdown(`## **🏎️** @motor
+- Preparar swagger
+- Revisar mapeos @Ines
+## **🍊** @masorange
+- Validar integración`)
+
+  assert.deepEqual(parsed.blocks[1].contexts, ['motor'])
+  assert.deepEqual(parsed.blocks[2].contexts, ['Ines', 'motor'])
+  assert.deepEqual(parsed.blocks[4].contexts, ['masorange'])
+})
+
+test('respeta niveles de encabezado al calcular contextos anidados', () => {
+  const blocks = applySectionContexts([
+    { type: 'heading', level: 2, content: '@motor' },
+    { type: 'heading', level: 3, content: '@backend' },
+    { type: 'log', content: 'Revisar contrato' },
+    { type: 'heading', level: 2, content: '@hogar' },
+    { type: 'log', content: 'Validar pantallas' },
+  ])
+
+  assert.deepEqual(blocks[2].contexts, ['motor', 'backend'])
+  assert.deepEqual(blocks[4].contexts, ['hogar'])
 })

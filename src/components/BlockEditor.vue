@@ -183,6 +183,7 @@ function handleKeydown(block, index, event) {
         {
           completed: block.checked,
           'document-title-row': block.type === 'heading' && block.level === 1,
+          'section-child': block.type !== 'heading' && block.inheritedContexts?.length,
         },
       ]"
     >

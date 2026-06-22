@@ -6,6 +6,7 @@ import {
   createId,
   extractContexts,
   extractTags,
+  headingEmoji,
   isoDate,
   normalizeNote,
   reminderDate,
@@ -105,7 +106,7 @@ export function useSecondMind() {
           noteDate: note.date,
           noteTitle: note.title,
           noteKind: note.kind,
-          contexts: extractContexts(block.content),
+          contexts: block.contexts || extractContexts(block.content),
           tags: extractTags(block.content),
           reminderState: reminderState(block.reminder),
         })),
@@ -121,13 +122,18 @@ export function useSecondMind() {
     const index = new Map()
     for (const note of notes.value) {
       for (const block of note.blocks) {
-        for (const name of extractContexts(block.content)) {
+        for (const name of block.contexts || extractContexts(block.content)) {
           const key = name.toLocaleLowerCase()
           const entry = index.get(key) || {
             name,
             count: 0,
             openTasks: 0,
             blocks: [],
+          }
+          if (block.type === 'heading') {
+            entry.emoji ||= headingEmoji(block.content)
+            index.set(key, entry)
+            continue
           }
           entry.count += 1
           if (block.type === 'task' && !block.checked) entry.openTasks += 1
@@ -141,7 +147,7 @@ export function useSecondMind() {
       const entry = index.get(key) || { name: note.title, count: 0, openTasks: 0, blocks: [] }
       Object.assign(entry, {
         noteId: note.id,
-        emoji: note.emoji,
+        emoji: note.emoji === '◈' && entry.emoji ? entry.emoji : note.emoji,
         color: note.color,
         contextType: note.contextType || 'project',
       })
@@ -250,13 +256,16 @@ export function useSecondMind() {
     let note = contextNotes.value.find((item) => item.title.toLocaleLowerCase() === key)
     if (!note) {
       const index = contextNotes.value.length
+      const indexedContext = contextIndex.value.find(
+        (context) => context.name.toLocaleLowerCase() === key,
+      )
       note = normalizeNote({
         id: createId(),
         kind: 'context',
         filename: `${contextSlug(name) || 'contexto'}.md`,
         title: name,
         contextType: options.contextType || 'project',
-        emoji: contextEmojis[index % contextEmojis.length],
+        emoji: indexedContext?.emoji || contextEmojis[index % contextEmojis.length],
         color: contextPalette[index % contextPalette.length],
         blocks: [
           { ...createBlock('heading', name), level: 1 },
@@ -420,8 +429,10 @@ export function useSecondMind() {
 
   function contextBlocks(name) {
     const key = name.toLocaleLowerCase()
-    return allBlocks.value.filter((block) =>
-      block.contexts.some((context) => context.toLocaleLowerCase() === key),
+    return allBlocks.value.filter(
+      (block) =>
+        block.type !== 'heading' &&
+        block.contexts.some((context) => context.toLocaleLowerCase() === key),
     )
   }
 

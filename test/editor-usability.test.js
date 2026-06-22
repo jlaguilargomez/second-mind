@@ -62,3 +62,14 @@ test('el título canónico de la nota no deja controles huérfanos en el editor'
   assert.match(editor, /'document-title-row'/)
   assert.match(styles, /\.document-title-row\s*\{\s*display:\s*none;/)
 })
+
+test('los bloques heredados muestran una jerarquía visual discreta', async () => {
+  const [editor, styles] = await Promise.all([
+    readFile(new URL('../src/components/BlockEditor.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(editor, /'section-child': block\.type !== 'heading'/)
+  assert.match(styles, /\.section-child\s*\{[\s\S]*border-left:/)
+  assert.match(styles, /\.block-heading \.block-kind-button\s*\{\s*opacity:\s*0;/)
+})

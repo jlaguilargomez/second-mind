@@ -105,16 +105,58 @@ export function createBlock(type = 'log', content = '') {
   }
 }
 
+export function cleanHeadingContent(content = '') {
+  return content
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/__([^_\n]+)__/g, '$1')
+    .trim()
+}
+
+export function headingEmoji(content = '') {
+  return content.match(/\p{Extended_Pictographic}\uFE0F?/u)?.[0] || null
+}
+
 function blockFromLine(line) {
   if (/^#{1,3}\s+/.test(line)) {
     const level = line.match(/^#+/)[0].length
-    return { ...createBlock('heading', line.replace(/^#{1,3}\s+/, '')), level }
+    const content = cleanHeadingContent(line.replace(/^#{1,3}\s+/, ''))
+    return { ...createBlock('heading', content), level }
   }
   const task = line.match(/^\s*-\s+\[([ xX])\]\s*(.*)$/)
   if (task) return { ...createBlock('task', task[2]), checked: task[1].toLowerCase() === 'x' }
   const log = line.match(/^\s*-\s+(.*)$/)
   if (log) return createBlock('log', log[1])
   return createBlock('text', line)
+}
+
+export function applySectionContexts(blocks = []) {
+  const activeSections = new Map()
+
+  return blocks.map((block) => {
+    if (block.type === 'heading') {
+      const level = block.level || 2
+      for (const activeLevel of [...activeSections.keys()]) {
+        if (activeLevel >= level) activeSections.delete(activeLevel)
+      }
+      const headingContexts = extractContexts(block.content)
+      if (headingContexts.length) activeSections.set(level, headingContexts)
+      return { ...block, contexts: headingContexts, inheritedContexts: [] }
+    }
+
+    const inheritedContexts = [
+      ...new Set(
+        [...activeSections.entries()]
+          .sort(([levelA], [levelB]) => levelA - levelB)
+          .flatMap(([, contexts]) => contexts),
+      ),
+    ]
+    const explicitContexts = extractContexts(block.content)
+    return {
+      ...block,
+      contexts: [...new Set([...explicitContexts, ...inheritedContexts])],
+      inheritedContexts,
+    }
+  })
 }
 
 export function parseMarkdown(markdown = '', options = {}) {
@@ -152,7 +194,7 @@ export function parseMarkdown(markdown = '', options = {}) {
   return {
     attributes,
     title: titleBlock?.content || fallbackTitle,
-    blocks,
+    blocks: applySectionContexts(blocks),
   }
 }
 
@@ -208,13 +250,16 @@ export function normalizeNote(note) {
     emoji: note.emoji || parsed.attributes.emoji || '◈',
     color: note.color || parsed.attributes.color || 'sage',
     contextType: note.contextType || parsed.attributes.contextType || 'project',
-    blocks: (note.blocks || parsed.blocks).map((block) => ({
-      ...block,
-      reminder: reminderDate(block.reminder),
-      id: block.id || createId(),
-      createdAt: block.createdAt || now,
-      updatedAt: block.updatedAt || now,
-    })),
+    blocks: applySectionContexts(
+      (note.blocks || parsed.blocks).map((block) => ({
+        ...block,
+        content: block.type === 'heading' ? cleanHeadingContent(block.content) : block.content,
+        reminder: reminderDate(block.reminder),
+        id: block.id || createId(),
+        createdAt: block.createdAt || now,
+        updatedAt: block.updatedAt || now,
+      })),
+    ),
     version: Number(note.version || parsed.attributes.version || 1),
     createdAt: note.createdAt || parsed.attributes.createdAt || now,
     updatedAt: note.updatedAt || parsed.attributes.updatedAt || now,
