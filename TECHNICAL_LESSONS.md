@@ -394,3 +394,21 @@ Markdown canónico → tokens de texto/contexto/etiqueta → representación inl
 ```
 
 Esta estrategia es más sencilla y segura que un `contenteditable` completo: evita reconstruir posiciones del cursor sobre nodos enriquecidos y mantiene intacto el parser existente.
+
+## 17. Sistema tipográfico local y responsive
+
+La primera escala visual utilizaba Georgia para casi todo el contenido editorial y tamaños muy pequeños en navegación, calendario y metadatos. El resultado tenía personalidad, pero presentaba demasiado contraste entre un título dominante y controles difíciles de leer.
+
+La revisión tipográfica aplica:
+
+- Inter Variable para interfaz, navegación, controles y metadatos.
+- Source Serif 4 Variable para títulos y contenido de notas.
+- Tamaño de lectura de 19 px en escritorio y 18 px en móvil.
+- Interlineado cercano a `1.55` para bloques.
+- Escala mínima de 10–11 px para metadatos secundarios.
+- Título responsive con límite superior para no dominar pantallas grandes.
+- Paneles laterales ligeramente más anchos para evitar texto comprimido.
+
+Solo se empaquetan los archivos latinos necesarios. Las fuentes se sirven desde el mismo origen y siguen cumpliendo la política CSP sin conexiones externas.
+
+La lección es que la accesibilidad tipográfica debe evaluarse como sistema: familia, peso, contraste, ancho de columna, interlineado y jerarquía. Aumentar todos los tamaños por igual suele empeorar el equilibrio.

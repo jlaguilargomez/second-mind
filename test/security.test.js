@@ -12,6 +12,18 @@ test('la aplicación no carga recursos de Google Fonts', async () => {
   assert.doesNotMatch(vite, /fonts\.googleapis|fonts\.gstatic/)
 })
 
+test('las fuentes de interfaz se empaquetan localmente', async () => {
+  const [styles, packageJson] = await Promise.all([
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+    readFile(new URL('../package.json', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(styles, /@fontsource-variable\/inter\/files\/inter-latin/)
+  assert.match(styles, /@fontsource-variable\/source-serif-4\/files\/source-serif-4-latin/)
+  assert.match(packageJson, /"@fontsource-variable\/inter"/)
+  assert.match(packageJson, /"@fontsource-variable\/source-serif-4"/)
+})
+
 test('el documento aplica una política de seguridad y no envía referrer', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8')
 
