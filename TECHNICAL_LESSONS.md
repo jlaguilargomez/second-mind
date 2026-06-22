@@ -376,3 +376,21 @@ La organización del trabajo también se hizo independiente del rol. En lugar de
 - Actividad y compromisos abiertos.
 
 La lección general es que el modelo debe representar responsabilidades y relaciones, no el cargo concreto del usuario. Esto permite reutilizar la misma herramienta para coordinación técnica, gestión de producto, consultoría, investigación o trabajo individual.
+
+## 16. Lectura enriquecida y edición Markdown
+
+Mostrar simultáneamente el texto `@contexto` dentro de un `textarea` y un chip adicional debajo perjudicaba la legibilidad y duplicaba información.
+
+La solución utiliza dos estados visuales para el mismo bloque:
+
+- En reposo, el contenido se tokeniza y los contextos se presentan como enlaces inline; las etiquetas se muestran con énfasis tipográfico.
+- Al pulsar el bloque, aparece el `textarea` con el Markdown original.
+- Al perder el foco, vuelve la presentación enriquecida.
+
+El Markdown almacenado no cambia. La transformación afecta únicamente a la presentación:
+
+```text
+Markdown canónico → tokens de texto/contexto/etiqueta → representación inline
+```
+
+Esta estrategia es más sencilla y segura que un `contenteditable` completo: evita reconstruir posiciones del cursor sobre nodos enriquecidos y mantiene intacto el parser existente.
