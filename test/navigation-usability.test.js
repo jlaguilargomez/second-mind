@@ -66,3 +66,18 @@ test('las tareas completadas mantienen el mismo estado visual en texto, contexto
   assert.match(styles, /\.task-card \.reminder-button\s*\{[\s\S]*grid-column:\s*2;/)
   assert.match(app, /`Diario · \$\{formatReminderDate/)
 })
+
+test('el día y el contexto permiten copiar una sección Markdown limpia', async () => {
+  const [app, styles] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /serializeJournalShare/)
+  assert.match(app, /serializeContextShare/)
+  assert.match(app, /Copiar sección como Markdown/)
+  assert.match(app, /navigator\.clipboard\?\.writeText/)
+  assert.match(app, /document\.execCommand\('copy'\)/)
+  assert.match(styles, /\.copy-section-button/)
+  assert.match(styles, /\.copy-section-button\.copied/)
+})

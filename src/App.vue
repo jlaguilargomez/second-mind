@@ -6,7 +6,14 @@ import BlockEditor from './components/BlockEditor.vue'
 import CalendarPanel from './components/CalendarPanel.vue'
 import ReminderDialog from './components/ReminderDialog.vue'
 import RichText from './components/RichText.vue'
-import { formatReminderDate, isoDate, reminderDate, serializeNote } from './lib/markdown'
+import {
+  formatReminderDate,
+  isoDate,
+  reminderDate,
+  serializeContextShare,
+  serializeJournalShare,
+  serializeNote,
+} from './lib/markdown'
 import { contextTypes, useSecondMind } from './composables/useSecondMind'
 
 const mind = useSecondMind()
@@ -40,6 +47,7 @@ const priorityRank = { high: 0, medium: 1, base: 2 }
 const reminderBlock = ref(null)
 const importInput = ref(null)
 const connectionError = ref('')
+const copyState = ref('idle')
 const isOnline = ref(navigator.onLine)
 const updateAvailable = ref(false)
 const updateSW = registerSW({
@@ -48,6 +56,7 @@ const updateSW = registerSW({
   },
 })
 let notificationTimer
+let copyStateTimer
 
 const pageTitle = computed(() => {
   if (currentView.value === 'journal') {
@@ -158,6 +167,48 @@ const journalContextCount = computed(() => activeNote.value?.contexts.length || 
 
 function pluralize(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`
+}
+
+const canCopySection = computed(() =>
+  ['journal', 'context'].includes(currentView.value) &&
+  (currentView.value !== 'journal' || activeNote.value) &&
+  (currentView.value !== 'context' || selectedContext.value),
+)
+
+async function writeClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  const copied = document.execCommand('copy')
+  textarea.remove()
+  if (!copied) throw new Error('No se pudo copiar el contenido.')
+}
+
+async function copyCurrentSection() {
+  const markdown = currentView.value === 'journal'
+    ? serializeJournalShare(pageTitle.value, activeNote.value?.blocks || [])
+    : serializeContextShare(selectedContext.value, activeContextBlocks.value)
+
+  try {
+    await writeClipboard(`${markdown}\n`)
+    copyState.value = 'copied'
+  } catch {
+    copyState.value = 'error'
+  }
+
+  window.clearTimeout(copyStateTimer)
+  copyStateTimer = window.setTimeout(() => {
+    copyState.value = 'idle'
+  }, 2200)
 }
 
 function navigate(view) {
@@ -327,6 +378,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('online', updateOnlineState)
   window.removeEventListener('offline', updateOnlineState)
   window.clearInterval(notificationTimer)
+  window.clearTimeout(copyStateTimer)
 })
 </script>
 
@@ -420,6 +472,16 @@ onBeforeUnmount(() => {
         >▦</button>
         <div class="breadcrumbs">
           <span>{{ currentView }}</span><b>/</b><strong>{{ pageTitle }}</strong>
+          <button
+            v-if="canCopySection"
+            class="copy-section-button"
+            :class="{ copied: copyState === 'copied', error: copyState === 'error' }"
+            :aria-label="copyState === 'copied' ? 'Markdown copiado' : 'Copiar sección como Markdown'"
+            :title="copyState === 'copied' ? 'Markdown copiado' : 'Copiar sección como Markdown'"
+            @click="copyCurrentSection"
+          >
+            {{ copyState === 'copied' ? '✓ Copiado' : copyState === 'error' ? 'Error' : '⧉ Markdown' }}
+          </button>
         </div>
         <div class="top-actions">
           <span class="save-state">{{ syncState }}</span>

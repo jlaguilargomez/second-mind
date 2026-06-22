@@ -279,6 +279,68 @@ export function serializeBlock(block) {
   return `${line}\n${properties.join('\n')}`
 }
 
+export function serializeShareBlock(block, options = {}) {
+  const indentLevel = Math.min(
+    Math.max(Number(options.indent ?? block.indent) || 0, 0),
+    6,
+  )
+  const indentation = '  '.repeat(indentLevel)
+  let line = block.content
+
+  if (block.type === 'heading') line = `${'#'.repeat(block.level || 2)} ${block.content}`
+  if (block.type === 'log') line = `${indentation}- ${block.content}`
+  if (block.type === 'task') {
+    line = `${indentation}- [${block.checked ? 'x' : ' '}] ${block.content}`
+  }
+
+  const propertyIndentation = ['log', 'task'].includes(block.type)
+    ? `${indentation}  `
+    : ''
+  const properties = [
+    block.reminder ? `${propertyIndentation}reminder:: ${reminderDate(block.reminder)}` : null,
+    block.type === 'task' && normalizePriority(block.priority) !== 'base'
+      ? `${propertyIndentation}priority:: ${normalizePriority(block.priority)}`
+      : null,
+  ].filter(Boolean)
+
+  return [line, ...properties].join('\n')
+}
+
+export function serializeJournalShare(title, blocks = []) {
+  const content = blocks
+    .filter(
+      (block) =>
+        !(block.type === 'heading' && block.level === 1) &&
+        block.content?.trim(),
+    )
+    .map((block) => serializeShareBlock(block))
+
+  return [`# ${title}`, ...content].join('\n\n').trim()
+}
+
+export function serializeContextShare(name, blocks = []) {
+  const groups = []
+
+  for (const block of blocks.filter((item) => item.content?.trim())) {
+    const source = block.noteDate || block.noteTitle || 'Sin fecha'
+    let group = groups.at(-1)
+    if (!group || group.source !== source) {
+      group = { source, blocks: [] }
+      groups.push(group)
+    }
+    group.blocks.push(block)
+  }
+
+  const sections = groups.map((group) => {
+    const content = group.blocks.map((block) =>
+      serializeShareBlock(block, { indent: block.contextIndent ?? block.indent }),
+    )
+    return [`## ${group.source}`, ...content].join('\n\n')
+  })
+
+  return [`# @${name}`, ...sections].join('\n\n').trim()
+}
+
 export function serializeNote(note) {
   const attributes = {
     id: note.id,

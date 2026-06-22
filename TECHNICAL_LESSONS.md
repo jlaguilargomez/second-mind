@@ -505,3 +505,18 @@ Las tareas incorporan una prioridad de tres estados:
 Un único control recorre los tres estados. Así se evita añadir un desplegable, un diálogo o un campo obligatorio a cada tarea. En la vista global, las tareas se ordenan primero por prioridad y después por fecha, manteniendo los filtros existentes.
 
 La lección es que una clasificación aporta valor cuando su coste de captura es casi nulo. Los valores predeterminados deben permanecer silenciosos y el formato persistido debe registrar únicamente la información que se aparta de ese valor.
+
+## 20. Markdown canónico frente a Markdown para compartir
+
+El Markdown de persistencia contiene información imprescindible para sincronización y edición, como `id::`, `created-at::` y `updated-at::`. Copiar ese mismo documento para pegarlo en otra herramienta expondría ruido técnico y dificultaría su lectura.
+
+La aplicación mantiene ahora dos serializaciones con objetivos distintos:
+
+- La serialización canónica conserva todos los metadatos y permite reconstruir el estado.
+- La serialización para compartir conserva contenido, tareas, sangría, recordatorios y prioridades, pero elimina identificadores y timestamps internos.
+
+Los contextos reúnen entradas procedentes de distintos diarios. Su copia añade encabezados por fecha de origen para que el contenido no pierda dimensión temporal al salir de Second Mind.
+
+El botón utiliza la API moderna del portapapeles y conserva una alternativa local para navegadores compatibles que no la expongan. La confirmación visual es temporal y accesible, evitando modales o pasos adicionales.
+
+La lección es que “portable” no siempre significa “adecuado para personas”. Conviene separar una representación fiel para almacenamiento de otra concisa para interoperabilidad cotidiana.

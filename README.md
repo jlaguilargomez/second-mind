@@ -35,6 +35,8 @@ Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área. La vista **S
 
 Las tareas admiten prioridad Base, Media o Alta. Base es el estado silencioso por defecto; Media y Alta se guardan como propiedades Markdown portables y se muestran con indicadores discretos.
 
+Desde un día o una página de contexto se puede copiar la sección completa como Markdown limpio. La copia conserva tareas, subitems, recordatorios y prioridades, pero omite identificadores y timestamps internos.
+
 Cada bloque conserva un identificador estable y sus propiedades dentro del propio Markdown:
 
 ```md

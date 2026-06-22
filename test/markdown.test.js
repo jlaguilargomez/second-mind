@@ -14,6 +14,8 @@ import {
   projectContextBlocks,
   reminderDate,
   reminderState,
+  serializeContextShare,
+  serializeJournalShare,
   serializeNote,
   titleFromMarkdown,
 } from '../src/lib/markdown.js'
@@ -217,4 +219,45 @@ test('normaliza prioridades desconocidas sin duplicar propiedades importadas', (
   assert.equal(note.blocks[0].priority, 'base')
   assert.equal(note.blocks[0].properties.priority, undefined)
   assert.doesNotMatch(serializeNote(note), /priority::/)
+})
+
+test('genera Markdown limpio para compartir un día sin propiedades técnicas', () => {
+  const blocks = [
+    { ...createBlock('heading', '2026-06-22'), level: 1 },
+    createBlock('log', 'Revisar avance @motor'),
+    {
+      ...createBlock('task', 'Resolver incidencia'),
+      indent: 1,
+      priority: 'high',
+      reminder: '2026-06-24',
+    },
+  ]
+  const markdown = serializeJournalShare('lunes, 22 de junio de 2026', blocks)
+
+  assert.match(markdown, /^# lunes, 22 de junio de 2026/)
+  assert.match(markdown, /- Revisar avance @motor/)
+  assert.match(markdown, /  - \[ \] Resolver incidencia/)
+  assert.match(markdown, /    reminder:: 2026-06-24/)
+  assert.match(markdown, /    priority:: high/)
+  assert.doesNotMatch(markdown, /id::|created-at::|updated-at::/)
+})
+
+test('agrupa por fecha el Markdown compartido de un contexto y conserva la jerarquía', () => {
+  const parent = { ...createBlock('log', 'Estado del proyecto @motor'), noteDate: '2026-06-22' }
+  const child = {
+    ...createBlock('task', 'Validar solución'),
+    contextIndent: 1,
+    noteDate: '2026-06-22',
+  }
+  const older = {
+    ...createBlock('log', 'Decisión anterior'),
+    noteDate: '2026-06-21',
+  }
+  const markdown = serializeContextShare('motor', [parent, child, older])
+
+  assert.match(markdown, /^# @motor/)
+  assert.match(markdown, /## 2026-06-22/)
+  assert.match(markdown, /  - \[ \] Validar solución/)
+  assert.match(markdown, /## 2026-06-21/)
+  assert.equal((markdown.match(/## 2026-06-22/g) || []).length, 1)
 })

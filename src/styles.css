@@ -123,6 +123,14 @@ kbd {
 .breadcrumbs { display: flex; gap: 8px; align-items: center; color: #7e7d76; font-size: 11px; text-transform: capitalize; }
 .breadcrumbs b { font-weight: 400; }
 .breadcrumbs strong { color: #4f504b; font-family: var(--font-mono); font-size: 11px; font-weight: 520; text-transform: none; }
+.copy-section-button {
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+  color: #62645f; background: rgba(255,255,255,.42); font-size: 9px;
+  font-weight: 650; text-transform: none; white-space: nowrap;
+}
+.copy-section-button:hover { color: var(--green); border-color: #9eb2aa; }
+.copy-section-button.copied { color: #315b50; border-color: #9eb2aa; background: var(--green-soft); }
+.copy-section-button.error { color: #8b4d47; border-color: #d8aaa6; background: #f2dfdd; }
 .top-actions { display: flex; align-items: center; gap: 8px; }
 .save-state { color: #74736d; font-size: 10px; }
 .icon-button, .mobile-menu-button {
@@ -457,6 +465,9 @@ kbd {
   .topbar { height: 58px; padding: 0 15px; }
   .mobile-menu-button { display: block; }
   .breadcrumbs span, .breadcrumbs b, .save-state, .top-actions .primary-button { display: none; }
+  .breadcrumbs { min-width: 0; gap: 6px; }
+  .breadcrumbs strong { max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .copy-section-button { padding: 6px 7px; }
   .top-actions .icon-button:first-of-type { display: none; }
   .main-grid { display: block; min-height: calc(100vh - 58px); }
   .content-pane { padding: 30px 20px 96px; }
