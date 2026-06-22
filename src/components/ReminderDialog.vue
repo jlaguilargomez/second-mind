@@ -7,17 +7,10 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save'])
 const value = ref('')
 
-function toLocalInput(dateValue) {
-  if (!dateValue) return ''
-  const date = new Date(dateValue)
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 16)
-}
-
 watch(
   () => props.block,
   (block) => {
-    value.value = toLocalInput(block?.reminder)
+    value.value = block?.reminder?.slice(0, 10) || ''
   },
   { immediate: true },
 )
@@ -29,8 +22,8 @@ watch(
       <p class="eyebrow">RECORDATORIO</p>
       <h2>{{ block.content || 'Bloque sin título' }}</h2>
       <label>
-        Fecha y hora
-        <input v-model="value" type="datetime-local" required />
+        Día
+        <input v-model="value" type="date" required />
       </label>
       <div>
         <button

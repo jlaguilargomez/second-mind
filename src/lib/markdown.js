@@ -11,6 +11,23 @@ export function isoDate(date = new Date()) {
   return local.toISOString().slice(0, 10)
 }
 
+export function reminderDate(reminder) {
+  if (!reminder) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(reminder)) return reminder
+  const parsed = new Date(reminder)
+  return Number.isNaN(parsed.getTime()) ? null : isoDate(parsed)
+}
+
+export function formatReminderDate(reminder, options = {}) {
+  const date = reminderDate(reminder)
+  if (!date) return ''
+  return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: options.short ? 'short' : 'long',
+    ...(options.year === false ? {} : { year: 'numeric' }),
+  })
+}
+
 export function parseFrontmatter(markdown = '') {
   const match = markdown.match(FRONTMATTER_PATTERN)
   if (!match) return { attributes: {}, body: markdown }
@@ -193,6 +210,7 @@ export function normalizeNote(note) {
     contextType: note.contextType || parsed.attributes.contextType || 'project',
     blocks: (note.blocks || parsed.blocks).map((block) => ({
       ...block,
+      reminder: reminderDate(block.reminder),
       id: block.id || createId(),
       createdAt: block.createdAt || now,
       updatedAt: block.updatedAt || now,
@@ -239,11 +257,10 @@ export function contextTemplate(name, options = {}) {
 }
 
 export function reminderState(reminder, now = new Date()) {
-  if (!reminder) return null
-  const target = new Date(reminder)
+  const targetDay = reminderDate(reminder)
+  if (!targetDay) return null
   const today = isoDate(now)
-  const targetDay = isoDate(target)
-  if (target < now && targetDay !== today) return 'overdue'
+  if (targetDay < today) return 'overdue'
   if (targetDay === today) return 'today'
   return 'upcoming'
 }

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { isoDate } from '../lib/markdown'
+import { isoDate, reminderDate } from '../lib/markdown'
 
 const props = defineProps({
   selectedDate: { type: String, required: true },
@@ -37,7 +37,7 @@ const days = computed(() => {
       currentMonth: date.getMonth() === month,
       hasNote: props.journals.some((note) => note.date === value),
       reminderCount: props.reminders.filter(
-        (block) => block.reminder && isoDate(new Date(block.reminder)) === value,
+        (block) => reminderDate(block.reminder) === value,
       ).length,
     }
   })

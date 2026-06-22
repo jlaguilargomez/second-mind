@@ -6,7 +6,7 @@ import BlockEditor from './components/BlockEditor.vue'
 import CalendarPanel from './components/CalendarPanel.vue'
 import ReminderDialog from './components/ReminderDialog.vue'
 import RichText from './components/RichText.vue'
-import { isoDate, serializeNote } from './lib/markdown'
+import { formatReminderDate, isoDate, reminderDate, serializeNote } from './lib/markdown'
 import { contextTypes, useSecondMind } from './composables/useSecondMind'
 
 const mind = useSecondMind()
@@ -70,7 +70,7 @@ const filteredTasks = computed(() =>
     if (taskFilter.value === 'completed' && !task.checked) return false
     if (
       taskFilter.value === 'today' &&
-      (!task.reminder || isoDate(new Date(task.reminder)) !== isoDate())
+      reminderDate(task.reminder) !== isoDate()
     ) {
       return false
     }
@@ -180,7 +180,7 @@ function editReminder(block) {
 
 function saveReminder(value) {
   mind.updateBlock(reminderBlock.value.noteId || activeNote.value.id, reminderBlock.value.id, {
-    reminder: value ? new Date(value).toISOString() : null,
+    reminder: value || null,
   })
   reminderBlock.value = null
   mind.checkDueNotifications()
@@ -422,7 +422,7 @@ onBeforeUnmount(() => {
                   <small>{{ task.noteDate || task.noteTitle }}</small>
                 </div>
                 <button class="reminder-button" @click="editReminder(task)">
-                  {{ task.reminder ? `◷ ${new Date(task.reminder).toLocaleDateString()}` : '＋ fecha' }}
+                  {{ task.reminder ? `◷ ${formatReminderDate(task.reminder)}` : '＋ fecha' }}
                 </button>
               </article>
             </div>
@@ -442,7 +442,7 @@ onBeforeUnmount(() => {
                   <span>{{ items.length }}</span>
                 </header>
                 <article v-for="block in items" :key="block.id" class="agenda-item">
-                  <time>{{ new Date(block.reminder).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) }}</time>
+                  <time>{{ formatReminderDate(block.reminder) }}</time>
                   <button @click="openTask(block)">
                     <RichText :text="block.content" @context="openContext" @tag="openTag" />
                   </button>
@@ -557,7 +557,7 @@ onBeforeUnmount(() => {
               class="upcoming-link"
               @click="openTask(block)"
             >
-              <time>{{ new Date(block.reminder).toLocaleDateString([], { day: 'numeric', month: 'short' }) }}</time>
+              <time>{{ formatReminderDate(block.reminder, { short: true, year: false }) }}</time>
               <span>{{ block.content }}</span>
             </button>
             <p v-if="!reminders.length" class="empty-copy">No tienes recordatorios pendientes.</p>

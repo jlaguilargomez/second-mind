@@ -80,7 +80,7 @@ Una tarea con contexto, etiqueta y recordatorio se guarda así:
 ```md
 - [ ] Revisar solución del date-picker @motor #seguimiento
   id:: 5a8319e5-50d7-4c50-8815-0b89ccb389c8
-  reminder:: 2026-06-25T07:00:00.000Z
+  reminder:: 2026-06-25
   created-at:: 2026-06-21T18:00:00.000Z
   updated-at:: 2026-06-21T18:30:00.000Z
 ```
@@ -110,7 +110,7 @@ La interfaz oculta las propiedades técnicas, pero el parser y el serializador l
 - `[[Motor]]`: formato heredado compatible con importaciones anteriores.
 - `- [ ]`: tarea pendiente.
 - `- [x]`: tarea completada.
-- `reminder::`: fecha y hora del recordatorio en ISO 8601.
+- `reminder::`: día del recordatorio en formato `YYYY-MM-DD`.
 
 ### Lección
 
@@ -180,17 +180,17 @@ La base de datos debería guardar:
 
 Los índices son proyecciones reconstruibles. El Markdown sigue siendo la fuente del contenido.
 
-## 6. Recordatorios y zonas horarias
+## 6. Recordatorios de día completo
 
-El formulario utiliza `datetime-local`, pero se convierte a ISO antes de persistir:
+Los recordatorios representan compromisos para un día, no alarmas con precisión horaria. El formulario utiliza un campo `date` y persiste directamente:
 
-```js
-new Date(localValue).toISOString()
+```md
+reminder:: 2026-06-25
 ```
 
-Al mostrarlo se transforma nuevamente a la zona local del dispositivo.
+Comparar cadenas `YYYY-MM-DD` permite clasificar vencido, hoy y próximo sin conversiones horarias ni desplazamientos de zona.
 
-Esto evita guardar fechas ambiguas, aunque exige definir cuidadosamente el comportamiento cuando el usuario cambia de zona horaria.
+Los recordatorios antiguos con timestamp se normalizan a la fecha local al cargar la nota. La siguiente serialización guarda únicamente el día.
 
 La PWA puede generar notificaciones locales mientras está ejecutándose. Para garantizar notificaciones con la aplicación cerrada será necesario:
 
@@ -309,11 +309,11 @@ Usar `navigator.onLine` directamente en la plantilla produjo un error porque no 
 
 Solución: reflejar ese valor mediante un `ref` reactivo y actualizarlo con eventos `online` y `offline`.
 
-### Fechas de `datetime-local`
+### Complejidad innecesaria en recordatorios
 
-Recortar una fecha ISO no conserva correctamente la hora local en todas las zonas.
+Guardar hora y zona para compromisos que solo necesitaban un día introducía fricción de entrada y errores potenciales de conversión.
 
-Solución: aplicar el offset local al preparar el valor del formulario y convertir a ISO al guardar.
+Solución: usar fechas de día completo y mantener compatibilidad de lectura con timestamps antiguos.
 
 ### Estado derivado y Markdown desactualizado
 

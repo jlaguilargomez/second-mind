@@ -8,6 +8,7 @@ import {
   extractTags,
   isoDate,
   normalizeNote,
+  reminderDate,
   reminderState,
   serializeNote,
 } from '../lib/markdown'
@@ -45,7 +46,7 @@ function createStarterNotes() {
         createBlock('log', 'Los bloques conectan tu trabajo con @producto y #seguimiento.'),
         {
           ...createBlock('task', 'Preparar la primera revisión del día @producto #prioridad'),
-          reminder: `${date}T17:00`,
+          reminder: date,
         },
       ],
     }),
@@ -114,7 +115,7 @@ export function useSecondMind() {
   const reminders = computed(() =>
     tasks.value
       .filter((block) => block.reminder && !block.checked)
-      .sort((a, b) => new Date(a.reminder) - new Date(b.reminder)),
+      .sort((a, b) => reminderDate(a.reminder).localeCompare(reminderDate(b.reminder))),
   )
   const contextIndex = computed(() => {
     const index = new Map()
@@ -393,9 +394,9 @@ export function useSecondMind() {
 
   function checkDueNotifications() {
     if (!('Notification' in window) || Notification.permission !== 'granted') return
-    const now = new Date()
+    const today = isoDate()
     for (const block of reminders.value) {
-      if (new Date(block.reminder) > now || notifiedReminders.has(block.id)) continue
+      if (reminderDate(block.reminder) > today || notifiedReminders.has(block.id)) continue
       notifiedReminders.add(block.id)
       new Notification('Second Mind', {
         body: block.content || 'Tienes un recordatorio pendiente',

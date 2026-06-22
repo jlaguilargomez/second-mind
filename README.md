@@ -38,7 +38,7 @@ Cada bloque conserva un identificador estable y sus propiedades dentro del propi
 ```md
 - [ ] Revisar solución del date-picker @motor #seguimiento
   id:: 5a8319e5-50d7-4c50-8815-0b89ccb389c8
-  reminder:: 2026-06-25T07:00:00.000Z
+  reminder:: 2026-06-25
 ```
 
 ## Persistencia y sincronización

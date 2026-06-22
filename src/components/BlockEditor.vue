@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue'
 import RichText from './RichText.vue'
+import { formatReminderDate } from '../lib/markdown'
 
 const props = defineProps({
   note: { type: Object, required: true },
@@ -173,7 +174,7 @@ function handleKeydown(block, index, event) {
 
         <div v-if="block.reminder" class="block-metadata">
           <span v-if="block.reminder" class="metadata-reminder">
-            ◷ {{ new Date(block.reminder).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) }}
+            ◷ {{ formatReminderDate(block.reminder) }}
           </span>
         </div>
 

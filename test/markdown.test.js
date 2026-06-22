@@ -7,6 +7,7 @@ import {
   extractTags,
   normalizeNote,
   parseMarkdown,
+  reminderDate,
   reminderState,
   serializeNote,
   titleFromMarkdown,
@@ -42,7 +43,7 @@ test('la plantilla diaria conserva la fecha, ids y un bloque editable', () => {
   assert.ok(parsed.blocks.every((block) => block.id))
 })
 
-test('parsea y serializa tareas con recordatorio sin pérdida', () => {
+test('migra recordatorios con hora a una fecha de día completo', () => {
   const markdown = `---
 id: note-1
 type: journal
@@ -63,15 +64,22 @@ version: 3
   assert.equal(note.id, 'note-1')
   assert.equal(note.version, 3)
   assert.equal(task.id, 'task-1')
-  assert.equal(task.reminder, '2026-06-25T07:00:00.000Z')
+  assert.equal(task.reminder, '2026-06-25')
+  assert.match(serializeNote(note), /reminder:: 2026-06-25/)
   assert.match(serializeNote(note), /- \[ \] Revisar el date-picker @motor #seguimiento/)
 })
 
 test('clasifica recordatorios vencidos, de hoy y próximos', () => {
   const now = new Date('2026-06-21T12:00:00Z')
-  assert.equal(reminderState('2026-06-20T09:00:00Z', now), 'overdue')
-  assert.equal(reminderState('2026-06-21T18:00:00Z', now), 'today')
-  assert.equal(reminderState('2026-06-22T09:00:00Z', now), 'upcoming')
+  assert.equal(reminderState('2026-06-20', now), 'overdue')
+  assert.equal(reminderState('2026-06-21', now), 'today')
+  assert.equal(reminderState('2026-06-22', now), 'upcoming')
+})
+
+test('normaliza fechas antiguas sin alterar recordatorios de día completo', () => {
+  assert.equal(reminderDate('2026-06-25'), '2026-06-25')
+  assert.equal(reminderDate('2026-06-25T07:00:00.000Z'), '2026-06-25')
+  assert.equal(reminderDate(null), null)
 })
 
 test('conserva el tipo de contexto en Markdown', () => {
