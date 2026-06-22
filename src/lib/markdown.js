@@ -100,10 +100,15 @@ export function createBlock(type = 'log', content = '') {
     content,
     indent: 0,
     checked: false,
+    priority: 'base',
     reminder: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
+}
+
+export function normalizePriority(priority) {
+  return ['medium', 'high'].includes(priority) ? priority : 'base'
 }
 
 export function cleanHeadingContent(content = '') {
@@ -221,6 +226,7 @@ export function parseMarkdown(markdown = '', options = {}) {
       const [, key, value] = property
       if (key === 'id') current.id = value
       else if (key === 'reminder') current.reminder = value
+      else if (key === 'priority') current.priority = normalizePriority(value)
       else if (key === 'created-at') current.createdAt = value
       else if (key === 'updated-at') current.updatedAt = value
       else {
@@ -260,9 +266,14 @@ export function serializeBlock(block) {
   const properties = [
     `  id:: ${block.id || createId()}`,
     block.reminder ? `  reminder:: ${block.reminder}` : null,
+    block.type === 'task' && normalizePriority(block.priority) !== 'base'
+      ? `  priority:: ${normalizePriority(block.priority)}`
+      : null,
     block.createdAt ? `  created-at:: ${block.createdAt}` : null,
     block.updatedAt ? `  updated-at:: ${block.updatedAt}` : null,
-    ...Object.entries(block.properties || {}).map(([key, value]) => `  ${key}:: ${value}`),
+    ...Object.entries(block.properties || {})
+      .filter(([key]) => key !== 'priority')
+      .map(([key, value]) => `  ${key}:: ${value}`),
   ].filter(Boolean)
 
   return `${line}\n${properties.join('\n')}`
@@ -304,18 +315,25 @@ export function normalizeNote(note) {
     color: note.color || parsed.attributes.color || 'sage',
     contextType: note.contextType || parsed.attributes.contextType || 'project',
     blocks: applySectionContexts(
-      (note.blocks || parsed.blocks).map((block) => ({
-        ...block,
-        content: block.type === 'heading' ? cleanHeadingContent(block.content) : block.content,
-        indent:
-          ['log', 'task'].includes(block.type)
-            ? Math.min(Math.max(Number(block.indent) || 0, 0), 6)
-            : 0,
-        reminder: reminderDate(block.reminder),
-        id: block.id || createId(),
-        createdAt: block.createdAt || now,
-        updatedAt: block.updatedAt || now,
-      })),
+      (note.blocks || parsed.blocks).map((block) => {
+        const properties = { ...(block.properties || {}) }
+        const priority = normalizePriority(block.priority || properties.priority)
+        delete properties.priority
+        return {
+          ...block,
+          properties,
+          content: block.type === 'heading' ? cleanHeadingContent(block.content) : block.content,
+          indent:
+            ['log', 'task'].includes(block.type)
+              ? Math.min(Math.max(Number(block.indent) || 0, 0), 6)
+              : 0,
+          priority: block.type === 'task' ? priority : 'base',
+          reminder: reminderDate(block.reminder),
+          id: block.id || createId(),
+          createdAt: block.createdAt || now,
+          updatedAt: block.updatedAt || now,
+        }
+      }),
     ),
     version: Number(note.version || parsed.attributes.version || 1),
     createdAt: note.createdAt || parsed.attributes.createdAt || now,

@@ -191,3 +191,30 @@ test('la proyección de contexto conserva juntos padres e hijos', () => {
   assert.deepEqual(ancestorProjection.map((block) => block.contextMatch), [false, true])
   assert.deepEqual(ancestorProjection.map((block) => block.contextIndent), [0, 1])
 })
+
+test('guarda prioridades de tarea de forma portable y omite la prioridad base', () => {
+  const highTask = normalizeNote({
+    kind: 'journal',
+    blocks: [{ ...createBlock('task', 'Resolver incidencia'), priority: 'high' }],
+  })
+  const baseTask = normalizeNote({
+    kind: 'journal',
+    blocks: [{ ...createBlock('task', 'Revisar documentación'), priority: 'base' }],
+  })
+
+  assert.match(serializeNote(highTask), /priority:: high/)
+  assert.equal(parseMarkdown(serializeNote(highTask)).blocks[0].priority, 'high')
+  assert.doesNotMatch(serializeNote(baseTask), /priority::/)
+})
+
+test('normaliza prioridades desconocidas sin duplicar propiedades importadas', () => {
+  const note = normalizeNote({
+    kind: 'journal',
+    markdown: `- [ ] Tarea importada
+  priority:: urgent`,
+  })
+
+  assert.equal(note.blocks[0].priority, 'base')
+  assert.equal(note.blocks[0].properties.priority, undefined)
+  assert.doesNotMatch(serializeNote(note), /priority::/)
+})

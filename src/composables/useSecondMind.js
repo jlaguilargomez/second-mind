@@ -331,6 +331,7 @@ export function useSecondMind() {
     updateBlock(noteId, blockId, {
       type,
       checked: type === 'task' ? false : undefined,
+      priority: type === 'task' ? 'base' : undefined,
       level: type === 'heading' ? 2 : undefined,
     })
   }

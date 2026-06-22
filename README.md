@@ -33,6 +33,8 @@ Los `@contextos` agrupan proyectos o personas y las `#etiquetas` clasifican tema
 
 Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área. La vista **Seguimiento** reúne proyectos activos, personas relacionadas y tareas delegadas o pendientes de respuesta sin asumir un cargo concreto.
 
+Las tareas admiten prioridad Base, Media o Alta. Base es el estado silencioso por defecto; Media y Alta se guardan como propiedades Markdown portables y se muestran con indicadores discretos.
+
 Cada bloque conserva un identificador estable y sus propiedades dentro del propio Markdown:
 
 ```md

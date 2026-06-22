@@ -26,13 +26,23 @@ const inputRefs = new Map()
 
 const contextNames = computed(() => props.contexts.map((item) => item.name))
 const tagNames = computed(() => props.tags.map((item) => item.name))
+const blockTypeDefinitions = {
+  log: { label: 'Entrada', icon: '•' },
+  text: { label: 'Párrafo', icon: '¶' },
+  task: { label: 'Tarea', icon: '○' },
+  heading: { label: 'Título', icon: 'H' },
+}
 const blockTypes = [
-  { value: 'log', label: 'Log', icon: '•' },
-  { value: 'text', label: 'Texto', icon: '¶' },
-  { value: 'task', label: 'Tarea', icon: '○' },
-  { value: 'heading', label: 'Título', icon: 'H' },
+  { value: 'log', ...blockTypeDefinitions.log },
+  { value: 'task', ...blockTypeDefinitions.task },
+  { value: 'heading', ...blockTypeDefinitions.heading },
 ]
 const indentableTypes = new Set(['log', 'task'])
+const priorityOptions = {
+  base: { label: 'Base', icon: '–' },
+  medium: { label: 'Media', icon: '↑' },
+  high: { label: 'Alta', icon: '↑↑' },
+}
 
 function registerInput(id, element) {
   if (element) inputRefs.set(id, element)
@@ -103,6 +113,14 @@ function addBlockAfter(blockId, type = 'log', content = '', options = {}) {
 function changeType(block, type) {
   emit('change-type', block.id, type)
   focusBlock(block.id)
+}
+
+function cyclePriority(block) {
+  const priorities = ['base', 'medium', 'high']
+  const currentIndex = priorities.indexOf(block.priority || 'base')
+  emit('update-block', block.id, {
+    priority: priorities[(currentIndex + 1) % priorities.length],
+  })
 }
 
 function changeIndent(block, index, direction) {
@@ -228,10 +246,10 @@ function handleKeydown(block, index, event) {
         <button
           v-else
           class="block-kind-button"
-          :title="`Editar ${blockTypes.find((type) => type.value === block.type)?.label || 'bloque'}`"
+          :title="`Editar ${blockTypeDefinitions[block.type]?.label || 'bloque'}`"
           @click="focusBlock(block.id)"
         >
-          {{ blockTypes.find((type) => type.value === block.type)?.icon || '•' }}
+          {{ blockTypeDefinitions[block.type]?.icon || '•' }}
         </button>
       </div>
 
@@ -272,7 +290,18 @@ function handleKeydown(block, index, event) {
           @keydown="handleKeydown(block, index, $event)"
         ></textarea>
 
-        <div v-if="block.reminder" class="block-metadata">
+        <div
+          v-if="block.reminder || (block.type === 'task' && block.priority !== 'base')"
+          class="block-metadata"
+        >
+          <span
+            v-if="block.type === 'task' && block.priority !== 'base'"
+            class="priority-badge"
+            :class="`priority-${block.priority}`"
+          >
+            {{ priorityOptions[block.priority]?.icon }}
+            {{ priorityOptions[block.priority]?.label }}
+          </span>
           <span v-if="block.reminder" class="metadata-reminder">
             ◷ {{ formatReminderDate(block.reminder) }}
           </span>
@@ -324,6 +353,17 @@ function handleKeydown(block, index, event) {
               title="Crear subitem (Tab)"
               @click="changeIndent(block, index, 1)"
             >→ <span>Subitem</span></button>
+            <button
+              v-if="block.type === 'task'"
+              class="priority-control"
+              :class="`priority-${block.priority || 'base'}`"
+              :title="`Prioridad ${priorityOptions[block.priority || 'base'].label}. Pulsar para cambiar`"
+              :aria-label="`Prioridad: ${priorityOptions[block.priority || 'base'].label}. Cambiar prioridad`"
+              @click="cyclePriority(block)"
+            >
+              {{ priorityOptions[block.priority || 'base'].icon }}
+              <span>{{ priorityOptions[block.priority || 'base'].label }}</span>
+            </button>
             <button
               v-if="block.type === 'task'"
               title="Añadir recordatorio"

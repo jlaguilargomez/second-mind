@@ -53,6 +53,7 @@ Cada bloque contiene:
   type: 'heading' | 'log' | 'text' | 'task',
   content,
   checked,
+  priority: 'base' | 'medium' | 'high',
   reminder,
   createdAt,
   updatedAt,
@@ -325,7 +326,7 @@ Solución: serializar el estado actual en el momento de exportar, en lugar de co
 
 Ocultar el selector de tipo hasta que el puntero pasa sobre una fila ahorra espacio, pero reduce mucho la descubribilidad y deja a los dispositivos táctiles sin una ruta clara.
 
-Solución: mostrar una barra contextual al editar con opciones explícitas para log, texto, tarea y título. La misma barra reúne las acciones relacionadas con el bloque y se adapta a una cuadrícula táctil en móvil.
+Solución: mostrar una barra contextual al editar con opciones explícitas para entrada, tarea y título. La misma barra reúne las acciones relacionadas con el bloque y se adapta a una cuadrícula táctil en móvil. Los párrafos Markdown importados siguen siendo compatibles, pero no ocupan una decisión principal durante la captura.
 
 Para mantener la escritura fluida, `Intro` crea un bloque inmediatamente después, conserva el tipo salvo después de un título y mueve el foco al nuevo bloque. Un botón persistente al final del diario ofrece la alternativa visible para quien todavía no conoce el atajo.
 
@@ -490,3 +491,17 @@ Guardar `indent` era suficiente para reconstruir visualmente una lista, pero no 
 La normalización calcula ahora `parentId` y `ancestorIds` a partir del orden y la profundidad de los bloques. Los subitems heredan los contextos del padre y las páginas de contexto incluyen también la cadena de ancestros cuando la mención aparece solo en un hijo. No se duplica contenido: diario y contexto siguen apuntando al mismo `id` de bloque.
 
 La lección general es que una jerarquía visual que afecta a búsqueda, filtros o navegación debe representarse como relación de dominio derivada, aunque su formato canónico continúe siendo una simple indentación Markdown.
+
+## 19. Prioridad lean y reducción de tipos visibles
+
+La diferencia entre una entrada con viñeta y un párrafo libre era técnicamente correcta, pero no aportaba suficiente valor durante la captura diaria. El editor presenta ahora solo tres decisiones: **Entrada**, **Tarea** y **Título**. El tipo interno `text` se conserva para poder importar y exportar párrafos Markdown existentes sin pérdida, aunque ya no se ofrece para crear bloques nuevos.
+
+Las tareas incorporan una prioridad de tres estados:
+
+- `base`: valor predeterminado, sin distintivo visual ni propiedad Markdown.
+- `medium`: indicador discreto y `priority:: medium`.
+- `high`: indicador reforzado y `priority:: high`.
+
+Un único control recorre los tres estados. Así se evita añadir un desplegable, un diálogo o un campo obligatorio a cada tarea. En la vista global, las tareas se ordenan primero por prioridad y después por fecha, manteniendo los filtros existentes.
+
+La lección es que una clasificación aporta valor cuando su coste de captura es casi nulo. Los valores predeterminados deben permanecer silenciosos y el formato persistido debe registrar únicamente la información que se aparta de ese valor.

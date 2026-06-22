@@ -8,12 +8,25 @@ test('el editor expone tipos de bloque y una acción clara para añadir entradas
     'utf8',
   )
 
-  for (const label of ['Log', 'Texto', 'Tarea', 'Título']) {
+  for (const label of ['Entrada', 'Tarea', 'Título']) {
     assert.match(editor, new RegExp(`label: '${label}'`))
   }
+  assert.doesNotMatch(editor, /\{ value: 'text',/)
   assert.match(editor, /class="add-entry-button"/)
   assert.match(editor, /Añadir entrada/)
   assert.match(editor, /o pulsa Intro al escribir/)
+})
+
+test('las tareas cambian prioridad con un único control contextual', async () => {
+  const editor = await readFile(
+    new URL('../src/components/BlockEditor.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(editor, /const priorities = \['base', 'medium', 'high'\]/)
+  assert.match(editor, /Prioridad: \$\{priorityOptions/)
+  assert.match(editor, /@click="cyclePriority\(block\)"/)
+  assert.match(editor, /block\.priority !== 'base'/)
 })
 
 test('Intro crea y enfoca el bloque siguiente salvo cuando se solicita un salto de línea', async () => {

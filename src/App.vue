@@ -36,6 +36,7 @@ const newContextType = ref('project')
 const selectedTag = ref(null)
 const taskFilter = ref('open')
 const contextFilter = ref('all')
+const priorityRank = { high: 0, medium: 1, base: 2 }
 const reminderBlock = ref(null)
 const importInput = ref(null)
 const connectionError = ref('')
@@ -84,8 +85,16 @@ const filteredTasks = computed(() =>
     }
     if (selectedTag.value && !task.tags.includes(selectedTag.value)) return false
     return true
-  }),
+  }).sort(
+    (a, b) =>
+      priorityRank[a.priority || 'base'] - priorityRank[b.priority || 'base'] ||
+      (a.reminder || '9999-12-31').localeCompare(b.reminder || '9999-12-31'),
+  ),
 )
+
+function priorityLabel(priority) {
+  return { medium: 'Media', high: 'Alta' }[priority] || ''
+}
 
 const reminderGroups = computed(() => ({
   overdue: reminders.value.filter((block) => block.reminderState === 'overdue'),
@@ -499,6 +508,11 @@ onBeforeUnmount(() => {
                 <div @click="openTask(task)">
                   <RichText :text="task.content" @context="openContext" @tag="openTag" />
                   <small>
+                    <span
+                      v-if="priorityLabel(task.priority)"
+                      class="priority-badge"
+                      :class="`priority-${task.priority}`"
+                    >{{ task.priority === 'high' ? '↑↑' : '↑' }} {{ priorityLabel(task.priority) }}</span>
                     {{
                       task.noteDate
                         ? `Diario · ${formatReminderDate(task.noteDate, { short: true })}`
@@ -556,7 +570,14 @@ onBeforeUnmount(() => {
                 ></button>
                 <div @click="openTask(task)">
                   <RichText :text="task.content" @context="openContext" @tag="openTag" />
-                  <small>{{ task.noteDate || task.noteTitle }}</small>
+                  <small>
+                    <span
+                      v-if="priorityLabel(task.priority)"
+                      class="priority-badge"
+                      :class="`priority-${task.priority}`"
+                    >{{ task.priority === 'high' ? '↑↑' : '↑' }} {{ priorityLabel(task.priority) }}</span>
+                    {{ task.noteDate || task.noteTitle }}
+                  </small>
                 </div>
                 <button class="reminder-button" @click="editReminder(task)">◷</button>
               </article>
@@ -619,7 +640,14 @@ onBeforeUnmount(() => {
                 ></button>
                 <div @click="openTask(task)">
                   <RichText :text="task.content" @context="openContext" @tag="openTag" />
-                  <small>{{ task.noteDate }}</small>
+                  <small>
+                    <span
+                      v-if="priorityLabel(task.priority)"
+                      class="priority-badge"
+                      :class="`priority-${task.priority}`"
+                    >{{ task.priority === 'high' ? '↑↑' : '↑' }} {{ priorityLabel(task.priority) }}</span>
+                    {{ task.noteDate }}
+                  </small>
                 </div>
                 <button class="reminder-button" @click="editReminder(task)">◷</button>
               </article>
