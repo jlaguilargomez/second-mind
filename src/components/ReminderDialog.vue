@@ -7,6 +7,13 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save'])
 const value = ref('')
 
+function localDate(offset = 0) {
+  const date = new Date()
+  date.setDate(date.getDate() + offset)
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 10)
+}
+
 watch(
   () => props.block,
   (block) => {
@@ -25,6 +32,11 @@ watch(
         Día
         <input v-model="value" type="date" required />
       </label>
+      <div class="quick-date-options">
+        <button type="button" @click="value = localDate()">Hoy</button>
+        <button type="button" @click="value = localDate(1)">Mañana</button>
+        <button type="button" @click="value = localDate(7)">En una semana</button>
+      </div>
       <div>
         <button
           v-if="block.reminder"

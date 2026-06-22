@@ -130,6 +130,26 @@ const waitingTasks = computed(() =>
   ),
 )
 const searchResults = computed(() => mind.search(searchQuery.value))
+const searchContextResults = computed(() => {
+  const rawQuery = searchQuery.value.trim()
+  if (!rawQuery || rawQuery.startsWith('#')) return []
+  const query = rawQuery.replace(/^@/, '').toLocaleLowerCase()
+  return contextIndex.value
+    .filter((context) => context.name.toLocaleLowerCase().includes(query))
+    .slice(0, 5)
+})
+const journalEntryCount = computed(() =>
+  activeNote.value?.blocks.filter(
+    (block) =>
+      !(block.type === 'heading' && block.level === 1) &&
+      block.content.trim(),
+  ).length || 0,
+)
+const journalContextCount = computed(() => activeNote.value?.contexts.length || 0)
+
+function pluralize(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`
+}
 
 function navigate(view) {
   mind.setView(view)
@@ -155,12 +175,41 @@ function openTask(block) {
   })
 }
 
+function openSearch() {
+  showSearch.value = true
+  showMobilePanel.value = false
+  nextTick(() => document.querySelector('.search-input')?.focus())
+}
+
+function openSearchContext(name) {
+  openContext(name)
+  showSearch.value = false
+}
+
+function openFirstSearchResult() {
+  const context = searchContextResults.value[0]
+  if (context) {
+    openSearchContext(context.name)
+    return
+  }
+  const block = searchResults.value[0]
+  if (block) {
+    openTask(block)
+    showSearch.value = false
+  }
+}
+
+function openDate(date) {
+  mind.openDate(date)
+  showMobilePanel.value = false
+}
+
 function updateActiveBlock(blockId, patch) {
   mind.updateBlock(activeNote.value.id, blockId, patch)
 }
 
-function addActiveBlock(afterBlockId, type) {
-  return mind.addBlock(activeNote.value.id, afterBlockId, type)
+function addActiveBlock(afterBlockId, type, content = '') {
+  return mind.addBlock(activeNote.value.id, afterBlockId, type, content)
 }
 
 function removeActiveBlock(blockId) {
@@ -238,12 +287,17 @@ async function enableNotifications() {
 function handleShortcuts(event) {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
-    showSearch.value = true
-    nextTick(() => document.querySelector('.search-input')?.focus())
+    openSearch()
   }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j') {
     event.preventDefault()
     mind.openDate(isoDate())
+  }
+  if (event.key === 'Escape') {
+    showSearch.value = false
+    showContextDialog.value = false
+    showMobilePanel.value = false
+    reminderBlock.value = null
   }
 }
 
@@ -348,7 +402,13 @@ onBeforeUnmount(() => {
 
     <main class="workspace">
       <header class="topbar">
-        <button class="mobile-menu-button" @click="showMobilePanel = !showMobilePanel">☰</button>
+        <button
+          class="mobile-menu-button"
+          aria-label="Calendario y próximos recordatorios"
+          :aria-expanded="showMobilePanel"
+          title="Calendario y próximos recordatorios"
+          @click="showMobilePanel = !showMobilePanel"
+        >▦</button>
         <div class="breadcrumbs">
           <span>{{ currentView }}</span><b>/</b><strong>{{ pageTitle }}</strong>
         </div>
@@ -371,7 +431,10 @@ onBeforeUnmount(() => {
             <div class="page-heading">
               <p class="eyebrow">DIARIO</p>
               <h1>{{ pageTitle }}</h1>
-              <p>{{ activeNote.blocks.length - 1 }} bloques · {{ activeNote.contexts.length }} contextos</p>
+              <p>
+                {{ pluralize(journalEntryCount, 'entrada') }} ·
+                {{ pluralize(journalContextCount, 'contexto') }}
+              </p>
             </div>
             <BlockEditor
               :note="activeNote"
@@ -543,11 +606,17 @@ onBeforeUnmount(() => {
         </section>
 
         <aside class="right-panel" :class="{ mobileOpen: showMobilePanel }">
+          <button
+            v-if="showMobilePanel"
+            class="mobile-panel-close"
+            aria-label="Cerrar calendario"
+            @click="showMobilePanel = false"
+          >×</button>
           <CalendarPanel
             :selected-date="selectedDate"
             :journals="journals"
             :reminders="reminders"
-            @select="mind.openDate"
+            @select="openDate"
           />
           <section class="right-section">
             <div class="section-heading"><span>PRÓXIMOS</span></div>
@@ -582,9 +651,17 @@ onBeforeUnmount(() => {
       </div>
     </main>
 
+    <button
+      v-if="showMobilePanel"
+      class="mobile-panel-backdrop"
+      aria-label="Cerrar el calendario tocando fuera"
+      @click="showMobilePanel = false"
+    ></button>
+
     <nav class="mobile-nav">
       <button :class="{ active: currentView === 'journal' }" @click="mind.openDate(isoDate())"><span>✎</span>Hoy</button>
       <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')"><span>✓</span>Tareas</button>
+      <button @click="openSearch"><span>⌕</span>Buscar</button>
       <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')"><span>◷</span>Agenda</button>
       <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')"><span>◎</span>Seguimiento</button>
     </nav>
@@ -598,10 +675,22 @@ onBeforeUnmount(() => {
             class="search-input"
             placeholder="Busca bloques, @contextos o #etiquetas…"
             @keydown.esc="showSearch = false"
+            @keydown.enter.prevent="openFirstSearchResult"
           />
           <kbd>ESC</kbd>
         </div>
         <div class="search-results">
+          <button
+            v-for="context in searchContextResults"
+            :key="`context-${context.name}`"
+            @click="openSearchContext(context.name)"
+          >
+            <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
+            <span>
+              <strong>@{{ context.name }}</strong>
+              <small>{{ contextTypes[context.contextType || 'project'] }} · {{ context.count }} menciones</small>
+            </span>
+          </button>
           <button
             v-for="block in searchResults"
             :key="block.id"
@@ -613,7 +702,10 @@ onBeforeUnmount(() => {
               <small>{{ block.noteDate || block.noteTitle }}</small>
             </span>
           </button>
-          <p v-if="searchQuery && !searchResults.length" class="search-prompt">No hay resultados.</p>
+          <p
+            v-if="searchQuery && !searchResults.length && !searchContextResults.length"
+            class="search-prompt"
+          >No hay resultados.</p>
           <p v-if="!searchQuery" class="search-prompt">Todo tu trabajo, a una búsqueda de distancia.</p>
         </div>
       </div>

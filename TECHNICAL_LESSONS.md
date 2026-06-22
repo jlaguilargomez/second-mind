@@ -329,6 +329,18 @@ Solución: mostrar una barra contextual al editar con opciones explícitas para 
 
 Para mantener la escritura fluida, `Intro` crea un bloque inmediatamente después, conserva el tipo salvo después de un título y mueve el foco al nuevo bloque. Un botón persistente al final del diario ofrece la alternativa visible para quien todavía no conoce el atajo.
 
+### Auditoría de usabilidad sobre flujos reales
+
+Una revisión visual aislada no detectó varias fricciones que sí aparecieron al completar recorridos con teclado y en viewport móvil:
+
+- `Intro` debe dividir el contenido en la posición del cursor, no limitarse a crear un bloque vacío.
+- El autocompletado de `@contextos` y `#etiquetas` debe admitir flechas, `Intro` y tabulador.
+- Un icono de menú no debe abrir un calendario; el nombre accesible y el símbolo tienen que describir la acción real.
+- La búsqueda móvil debe ser de primer nivel y permitir abrir directamente contextos, no solo bloques que los mencionan.
+- Los resúmenes deben contar entradas con contenido y respetar singular y plural.
+
+La lección general es probar la aplicación como una secuencia de intención, no como una colección de pantallas. Cada control debe conservar el flujo mental del usuario: capturar, clasificar, recuperar y continuar escribiendo.
+
 ## 12. Deuda técnica consciente
 
 - El editor por bloques es propio y sencillo; no cubre todavía selección múltiple, drag and drop, undo global ni pegado estructurado.

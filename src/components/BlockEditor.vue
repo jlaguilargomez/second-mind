@@ -21,6 +21,7 @@ const emit = defineEmits([
 
 const activeSuggestion = ref(null)
 const focusedBlockId = ref(null)
+const activeSuggestionIndex = ref(0)
 const inputRefs = new Map()
 
 const contextNames = computed(() => props.contexts.map((item) => item.name))
@@ -80,15 +81,18 @@ function handleInput(block, event) {
     blockId: block.id,
     type,
     query: fragment[2],
+    start: cursor - fragment[2].length - 1,
+    end: cursor,
     options: source
       .filter((name) => name.toLocaleLowerCase().includes(query))
       .slice(0, 6),
   }
+  activeSuggestionIndex.value = 0
 }
 
-function addBlockAfter(blockId, type = 'log') {
+function addBlockAfter(blockId, type = 'log', content = '') {
   const existingIds = new Set(props.note.blocks.map((block) => block.id))
-  emit('add-block', blockId, type)
+  emit('add-block', blockId, type, content)
   nextTick(() => {
     const newBlock = props.note.blocks.find((block) => !existingIds.has(block.id))
     if (newBlock) focusBlock(newBlock.id)
@@ -102,14 +106,45 @@ function changeType(block, type) {
 
 function applySuggestion(block, option) {
   const marker = activeSuggestion.value.type === 'context' ? '@' : '#'
-  const pattern = new RegExp(`${marker}${activeSuggestion.value.query}$`)
-  const content = block.content.replace(pattern, `${marker}${option} `)
+  const insertion = `${marker}${option} `
+  const content =
+    block.content.slice(0, activeSuggestion.value.start) +
+    insertion +
+    block.content.slice(activeSuggestion.value.end)
+  const cursor = activeSuggestion.value.start + insertion.length
   emit('update-block', block.id, { content })
   activeSuggestion.value = null
-  nextTick(() => inputRefs.get(block.id)?.focus())
+  nextTick(() => {
+    const input = inputRefs.get(block.id)
+    input?.focus()
+    if (input) input.setSelectionRange(cursor, cursor)
+  })
 }
 
 function handleKeydown(block, index, event) {
+  const suggestion = activeSuggestion.value?.blockId === block.id
+    ? activeSuggestion.value
+    : null
+
+  if (suggestion && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+    event.preventDefault()
+    const optionCount = suggestion.options.length
+    if (!optionCount) return
+    const direction = event.key === 'ArrowDown' ? 1 : -1
+    activeSuggestionIndex.value =
+      (activeSuggestionIndex.value + direction + optionCount) % optionCount
+    return
+  }
+  if (suggestion && ['Enter', 'Tab'].includes(event.key)) {
+    const option =
+      suggestion.options[activeSuggestionIndex.value] ||
+      (suggestion.type === 'context' && suggestion.query ? suggestion.query : null)
+    if (option) {
+      event.preventDefault()
+      applySuggestion(block, option)
+      return
+    }
+  }
   if (event.key === 'Escape') {
     activeSuggestion.value = null
     return
@@ -118,7 +153,12 @@ function handleKeydown(block, index, event) {
     event.preventDefault()
     activeSuggestion.value = null
     const type = block.type === 'heading' ? 'log' : block.type
-    addBlockAfter(block.id, type)
+    const start = event.target.selectionStart
+    const end = event.target.selectionEnd
+    const before = block.content.slice(0, start)
+    const after = block.content.slice(end)
+    emit('update-block', block.id, { content: before })
+    addBlockAfter(block.id, type, after)
     return
   }
   if (event.key === 'Backspace' && !block.content && index > 0) {
@@ -211,8 +251,9 @@ function handleKeydown(block, index, event) {
           class="suggestion-menu"
         >
           <button
-            v-for="option in activeSuggestion.options"
+            v-for="(option, optionIndex) in activeSuggestion.options"
             :key="option"
+            :class="{ active: optionIndex === activeSuggestionIndex }"
             @mousedown.prevent="applySuggestion(block, option)"
           >
             <span>{{ activeSuggestion.type === 'context' ? '@' : '#' }}</span>{{ option }}
@@ -258,7 +299,7 @@ function handleKeydown(block, index, event) {
 
     <button
       class="add-entry-button"
-      @click="addBlockAfter(note.blocks.at(-1)?.id, 'log')"
+      @click="addBlockAfter(note.blocks.at(-1)?.id)"
     >
       <span>＋</span>
       <strong>Añadir entrada</strong>

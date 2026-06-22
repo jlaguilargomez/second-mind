@@ -23,8 +23,21 @@ test('Intro crea y enfoca el bloque siguiente salvo cuando se solicita un salto 
   )
 
   assert.match(editor, /event\.key === 'Enter' && !event\.shiftKey/)
-  assert.match(editor, /addBlockAfter\(block\.id, type\)/)
+  assert.match(editor, /addBlockAfter\(block\.id, type, after\)/)
   assert.match(editor, /if \(newBlock\) focusBlock\(newBlock\.id\)/)
+})
+
+test('el autocompletado se puede recorrer y aceptar sin abandonar el teclado', async () => {
+  const editor = await readFile(
+    new URL('../src/components/BlockEditor.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(editor, /\['ArrowDown', 'ArrowUp'\]/)
+  assert.match(editor, /\['Enter', 'Tab'\]/)
+  assert.match(editor, /activeSuggestionIndex/)
+  assert.match(editor, /suggestion\.type === 'context' && suggestion\.query/)
+  assert.match(editor, /setSelectionRange\(cursor, cursor\)/)
 })
 
 test('el título canónico de la nota no deja controles huérfanos en el editor', async () => {
