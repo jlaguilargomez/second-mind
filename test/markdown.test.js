@@ -11,6 +11,7 @@ import {
   headingEmoji,
   normalizeNote,
   parseMarkdown,
+  projectContextBlocks,
   reminderDate,
   reminderState,
   serializeNote,
@@ -158,4 +159,35 @@ test('limita la indentación persistida a seis niveles', () => {
 
   assert.equal(note.blocks[0].indent, 6)
   assert.match(serializeNote(note), /^ {12}- Profundo$/m)
+})
+
+test('los subitems heredan el contexto y la identidad de sus padres', () => {
+  const parsed = parseMarkdown(`- Seguimiento de validaciones @hogar
+  - El web component falla en UAT
+    - [ ] Revisar la causa`)
+  const [parent, child, grandchild] = parsed.blocks
+
+  assert.deepEqual(child.contexts, ['hogar'])
+  assert.equal(child.parentId, parent.id)
+  assert.deepEqual(child.ancestorIds, [parent.id])
+  assert.deepEqual(grandchild.contexts, ['hogar'])
+  assert.equal(grandchild.parentId, child.id)
+  assert.deepEqual(grandchild.ancestorIds, [parent.id, child.id])
+})
+
+test('la proyección de contexto conserva juntos padres e hijos', () => {
+  const parentContext = parseMarkdown(`- Seguimiento @hogar
+  - Incidencia sin mención explícita`).blocks
+  const inheritedProjection = projectContextBlocks(parentContext, 'hogar')
+
+  assert.equal(inheritedProjection.length, 2)
+  assert.deepEqual(inheritedProjection.map((block) => block.contextIndent), [0, 1])
+
+  const childContext = parseMarkdown(`- Conversación general
+  - Acuerdo específico @motor`).blocks
+  const ancestorProjection = projectContextBlocks(childContext, 'motor')
+
+  assert.equal(ancestorProjection.length, 2)
+  assert.deepEqual(ancestorProjection.map((block) => block.contextMatch), [false, true])
+  assert.deepEqual(ancestorProjection.map((block) => block.contextIndent), [0, 1])
 })

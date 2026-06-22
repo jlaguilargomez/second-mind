@@ -482,3 +482,11 @@ La revisión tipográfica aplica:
 Solo se empaquetan los archivos latinos necesarios. Las fuentes se sirven desde el mismo origen y siguen cumpliendo la política CSP sin conexiones externas.
 
 La lección es que la accesibilidad tipográfica debe evaluarse como sistema: familia, peso, contraste, ancho de columna, interlineado y jerarquía. Aumentar todos los tamaños por igual suele empeorar el equilibrio.
+
+## 18. Una sangría también es una relación de dominio
+
+Guardar `indent` era suficiente para reconstruir visualmente una lista, pero no para proyectarla en vistas derivadas. Un contexto encontraba el bloque padre por su `@mención`, aunque ignoraba a los hijos que dependían de él.
+
+La normalización calcula ahora `parentId` y `ancestorIds` a partir del orden y la profundidad de los bloques. Los subitems heredan los contextos del padre y las páginas de contexto incluyen también la cadena de ancestros cuando la mención aparece solo en un hijo. No se duplica contenido: diario y contexto siguen apuntando al mismo `id` de bloque.
+
+La lección general es que una jerarquía visual que afecta a búsqueda, filtros o navegación debe representarse como relación de dominio derivada, aunque su formato canónico continúe siendo una simple indentación Markdown.

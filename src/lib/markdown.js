@@ -143,19 +143,30 @@ function blockFromLine(line) {
 
 export function applySectionContexts(blocks = []) {
   const activeSections = new Map()
+  const activeParents = []
 
   return blocks.map((block) => {
     if (block.type === 'heading') {
+      activeParents.length = 0
       const level = block.level || 2
       for (const activeLevel of [...activeSections.keys()]) {
         if (activeLevel >= level) activeSections.delete(activeLevel)
       }
       const headingContexts = extractContexts(block.content)
       if (headingContexts.length) activeSections.set(level, headingContexts)
-      return { ...block, contexts: headingContexts, inheritedContexts: [] }
+      return {
+        ...block,
+        contexts: headingContexts,
+        inheritedContexts: [],
+        parentId: null,
+        ancestorIds: [],
+      }
     }
 
-    const inheritedContexts = [
+    const indent = ['log', 'task'].includes(block.type) ? block.indent || 0 : 0
+    activeParents.splice(indent)
+    const parent = indent > 0 ? [...activeParents].reverse().find(Boolean) : null
+    const sectionContexts = [
       ...new Set(
         [...activeSections.entries()]
           .sort(([levelA], [levelB]) => levelA - levelB)
@@ -163,12 +174,39 @@ export function applySectionContexts(blocks = []) {
       ),
     ]
     const explicitContexts = extractContexts(block.content)
-    return {
+    const inheritedContexts = [
+      ...new Set([...sectionContexts, ...(parent?.contexts || [])]),
+    ]
+    const enrichedBlock = {
       ...block,
       contexts: [...new Set([...explicitContexts, ...inheritedContexts])],
       inheritedContexts,
+      parentId: parent?.id || null,
+      ancestorIds: parent ? [...(parent.ancestorIds || []), parent.id].filter(Boolean) : [],
     }
+    activeParents[indent] = enrichedBlock
+    return enrichedBlock
   })
+}
+
+export function projectContextBlocks(blocks = [], name = '') {
+  const key = name.toLocaleLowerCase()
+  const matches = blocks.filter(
+    (block) =>
+      block.type !== 'heading' &&
+      (block.contexts || extractContexts(block.content)).some(
+        (context) => context.toLocaleLowerCase() === key,
+      ),
+  )
+  const includedIds = new Set(matches.flatMap((block) => [block.id, ...(block.ancestorIds || [])]))
+
+  return blocks
+    .filter((block) => block.type !== 'heading' && includedIds.has(block.id))
+    .map((block) => ({
+      ...block,
+      contextIndent: (block.ancestorIds || []).filter((id) => includedIds.has(id)).length,
+      contextMatch: matches.some((match) => match.id === block.id),
+    }))
 }
 
 export function parseMarkdown(markdown = '', options = {}) {

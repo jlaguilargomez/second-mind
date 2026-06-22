@@ -628,8 +628,14 @@ onBeforeUnmount(() => {
             <section class="context-section">
               <div class="section-title"><h2>Actividad reciente</h2><span>{{ activeContextBlocks.length }}</span></div>
               <div class="activity-timeline">
-                <article v-for="block in activeContextBlocks" :key="block.id" @click="openTask(block)">
-                  <time>{{ block.noteDate || block.noteTitle }}</time>
+                <article
+                  v-for="block in activeContextBlocks"
+                  :key="block.id"
+                  :class="{ 'activity-child': block.contextIndent > 0 }"
+                  :style="{ '--context-indent': Math.min(block.contextIndent || 0, 6) }"
+                  @click="openTask(block)"
+                >
+                  <time v-if="!block.contextIndent">{{ block.noteDate || block.noteTitle }}</time>
                   <p><RichText :text="block.content" @context="openContext" @tag="openTag" /></p>
                 </article>
               </div>

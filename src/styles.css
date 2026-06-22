@@ -308,10 +308,28 @@ kbd {
 .context-section { margin-bottom: 38px; }
 .context-section .task-card:first-of-type { margin-top: 8px; }
 .activity-timeline { border-left: 1px solid #cfc9bd; margin: 18px 0 0 10px; padding-left: 22px; }
-.activity-timeline article { position: relative; padding: 0 0 23px; cursor: pointer; }
+.activity-timeline article {
+  position: relative;
+  margin-left: calc(var(--context-indent, 0) * 26px);
+  padding: 0 0 23px;
+  cursor: pointer;
+}
 .activity-timeline article::before {
   content: ''; position: absolute; left: -27px; top: 4px; width: 8px; height: 8px;
   border: 2px solid var(--paper); border-radius: 50%; background: var(--green);
+}
+.activity-timeline article.activity-child {
+  margin-top: -12px;
+  padding-left: 17px;
+  border-left: 1px solid #ded8cd;
+}
+.activity-timeline article.activity-child::before {
+  left: -5px;
+  top: 12px;
+  width: 5px;
+  height: 5px;
+  border-width: 1px;
+  background: #94978f;
 }
 .activity-timeline time { color: #74736c; font-family: var(--font-mono); font-size: 10px; }
 .activity-timeline p { margin: 5px 0 0; font-family: var(--font-editor); font-size: 18px; line-height: 1.5; }

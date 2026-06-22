@@ -9,6 +9,7 @@ import {
   headingEmoji,
   isoDate,
   normalizeNote,
+  projectContextBlocks,
   reminderDate,
   reminderState,
   serializeNote,
@@ -428,11 +429,11 @@ export function useSecondMind() {
   }
 
   function contextBlocks(name) {
-    const key = name.toLocaleLowerCase()
-    return allBlocks.value.filter(
-      (block) =>
-        block.type !== 'heading' &&
-        block.contexts.some((context) => context.toLocaleLowerCase() === key),
+    return notes.value.flatMap((note) =>
+      projectContextBlocks(
+        allBlocks.value.filter((block) => block.noteId === note.id),
+        name,
+      ),
     )
   }
 
