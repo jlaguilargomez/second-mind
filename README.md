@@ -31,7 +31,7 @@ mi-segundo-cerebro/
 
 Los `@contextos` agrupan proyectos o personas y las `#etiquetas` clasifican temas transversales. Los enlaces heredados `[[Producto]]` continúan funcionando como contextos.
 
-Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área. La vista **Seguimiento** reúne proyectos activos, personas relacionadas y tareas delegadas o pendientes de respuesta sin asumir un cargo concreto.
+Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área. La vista **Seguimiento** reúne proyectos activos, personas relacionadas y tareas marcadas con `#delegado` o `#esperando`. Mencionar una `@persona` no convierte una tarea propia en seguimiento.
 
 Las tareas admiten prioridad Base, Media o Alta. Base es el estado silencioso por defecto; Media y Alta se guardan como propiedades Markdown portables y se muestran con indicadores discretos.
 
