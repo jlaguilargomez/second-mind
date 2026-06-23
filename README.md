@@ -43,6 +43,8 @@ La actividad de cada contexto se presenta cronológicamente, con los diarios má
 
 Las listas de contextos y etiquetas tienen desplazamiento independiente en el lateral, manteniendo siempre accesible la información de almacenamiento y sincronización.
 
+La interfaz móvil utiliza iconos y objetivos táctiles ampliados en la cabecera, navegación inferior, tareas y acciones de bloque.
+
 Cada bloque conserva un identificador estable y sus propiedades dentro del propio Markdown:
 
 ```md

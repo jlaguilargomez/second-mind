@@ -553,3 +553,16 @@ El lateral combina navegación fija, colecciones variables y un pie persistente.
 Ambas colecciones son ahora elementos flexibles con `min-height: 0` y desplazamiento vertical propio. El pie usa `flex: 0 0 auto`, por lo que conserva siempre su espacio y no puede ser comprimido por las listas. `overscroll-behavior: contain` evita además que alcanzar el final de una colección desplace accidentalmente la página principal.
 
 La lección es que `overflow: auto` no basta dentro de un contenedor flex: el elemento desplazable necesita poder encogerse, y los elementos persistentes deben declarar explícitamente que no deben hacerlo.
+
+## 24. Tamaño óptico y objetivo táctil no son lo mismo
+
+Los botones móviles de cabecera tenían dimensiones aceptables, pero sus glifos internos seguían siendo demasiado pequeños. El área se podía pulsar, aunque visualmente el control parecía débil y exigía más atención de la necesaria.
+
+La escala móvil separa ahora dos decisiones:
+
+- Objetivos táctiles de aproximadamente 40–44 px para controles principales.
+- Iconos visibles de 21–25 px dentro de esos objetivos.
+
+También se amplían los checks de tarea y los selectores de tipo de bloque. La navegación inferior crece solo cuatro píxeles de altura, suficientes para alojar iconos mayores sin sacrificar de forma relevante el área de contenido.
+
+La lección es que cumplir el tamaño mínimo de pulsación no garantiza legibilidad. Deben revisarse por separado la caja interactiva y el peso óptico del símbolo.
