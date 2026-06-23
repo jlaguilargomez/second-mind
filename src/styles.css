@@ -83,6 +83,17 @@ kbd {
   width: 100%; display: flex; align-items: center; gap: 9px; border: 0; border-radius: 7px;
   padding: 9px; background: transparent; color: #555650; text-align: left; font-size: 13px;
 }
+.sidebar-entity-row { display: flex; align-items: center; border-radius: 7px; }
+.sidebar-entity-row.active { background: rgba(255,255,255,.48); }
+.sidebar-entity-row .context-link, .sidebar-entity-row .tag-link { min-width: 0; }
+.delete-entity-button {
+  width: 27px; height: 27px; display: grid; place-items: center; flex: 0 0 auto;
+  border: 0; border-radius: 6px; color: #8b625c; background: transparent;
+  opacity: 0; font-size: 16px; line-height: 1;
+}
+.sidebar-entity-row:hover .delete-entity-button,
+.sidebar-entity-row:focus-within .delete-entity-button { opacity: 1; }
+.delete-entity-button:hover { background: #f2dfdd; }
 .primary-nav button:hover, .primary-nav button.active, .context-link:hover,
 .context-link.active, .tag-link:hover, .tag-link.active { background: rgba(255,255,255,.48); color: var(--ink); }
 .primary-nav button > span { width: 18px; color: #686c66; font-size: 16px; text-align: center; }
@@ -315,11 +326,16 @@ kbd {
   color: #4f504b; background: rgba(255,255,255,.4);
 }
 .filter-summary { display: flex; align-items: center; justify-content: space-between; min-height: 29px; }
+.filter-summary > div { display: flex; align-items: center; gap: 4px; }
 .filter-summary > span { color: #77766f; font-size: 10px; }
 .filter-bar .clear-filters-button {
   border: 0; border-radius: 6px; padding: 6px 8px; color: #6c6d67; background: transparent;
 }
 .filter-bar .clear-filters-button:hover { color: var(--green); background: var(--green-soft); }
+.filter-bar .delete-filter-entity-button {
+  border: 0; border-radius: 6px; padding: 6px 8px; color: #8b4d47; background: transparent;
+}
+.filter-bar .delete-filter-entity-button:hover { background: #f2dfdd; }
 .task-list { display: flex; flex-direction: column; gap: 7px; }
 .task-card {
   display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: 9px;
@@ -363,6 +379,11 @@ kbd {
 .context-hero > span { width: 62px; height: 62px; display: grid; place-items: center; border-radius: 16px; background: rgba(255,255,255,.45); font-size: 30px; }
 .context-type-control { display: flex; align-items: center; gap: 7px; margin-top: 12px; color: #74736c; font-size: 11px; }
 .context-type-control select { border: 1px solid rgba(0,0,0,.1); border-radius: 6px; padding: 5px 8px; background: rgba(255,255,255,.5); font-size: 11px; }
+.delete-context-button {
+  margin-top: 10px; border: 0; border-radius: 6px; padding: 5px 8px;
+  color: #8b4d47; background: rgba(255,255,255,.38); font-size: 10px;
+}
+.delete-context-button:hover { background: #f2dfdd; }
 .context-sage { background: var(--green-soft); }
 .context-violet { background: var(--violet-soft); }
 .context-blue { background: #dfebf0; }
@@ -587,5 +608,6 @@ kbd {
   .agenda-item { grid-template-columns: 84px minmax(0, 1fr) 22px; }
   .task-filter-selects { grid-template-columns: 1fr; }
   .filter-bar select { max-width: none; }
+  .delete-entity-button { opacity: 1; }
   .floating-import { display: none; }
 }

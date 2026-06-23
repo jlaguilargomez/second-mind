@@ -87,3 +87,8 @@ export async function writeNote(root, note) {
   await writable.write(note.markdown)
   await writable.close()
 }
+
+export async function removeNote(root, note) {
+  const directory = await root.getDirectoryHandle(note.kind === 'context' ? 'contexts' : 'journals')
+  await directory.removeEntry(note.filename)
+}

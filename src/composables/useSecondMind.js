@@ -12,6 +12,8 @@ import {
   projectContextBlocks,
   reminderDate,
   reminderState,
+  removeContextReference,
+  removeTagReference,
   serializeNote,
   sortContextBlocksByDate,
 } from '../lib/markdown'
@@ -19,6 +21,7 @@ import { LocalRepository } from '../repositories/LocalRepository'
 import {
   getDirectoryHandle,
   readWorkspace,
+  removeNote,
   saveDirectoryHandle,
   verifyPermission,
   writeNote,
@@ -290,6 +293,59 @@ export function useSecondMind() {
     persistNote(updated)
   }
 
+  async function removeReferences(name, removeReference, excludedNoteId = null) {
+    const affected = notes.value
+      .filter((note) => note.id !== excludedNoteId)
+      .map((note) => {
+        const blocks = note.blocks.map((block) => ({
+          ...block,
+          content: removeReference(block.content, name),
+        }))
+        const changed = blocks.some((block, index) => block.content !== note.blocks[index].content)
+        return changed ? normalizeNote({ ...note, blocks, markdown: undefined }) : null
+      })
+      .filter(Boolean)
+
+    for (const note of affected) {
+      replaceNote(note)
+      await persistNote(note, { immediate: true })
+    }
+  }
+
+  async function deleteContext(name) {
+    const key = name.trim().toLocaleLowerCase()
+    const contextNote = contextNotes.value.find(
+      (note) => note.title.toLocaleLowerCase() === key,
+    )
+
+    if (contextNote) {
+      clearTimeout(saveTimers.get(contextNote.id))
+      saveTimers.delete(contextNote.id)
+    }
+    await removeReferences(name, removeContextReference, contextNote?.id)
+
+    if (contextNote) {
+      await repository.deleteNote(contextNote.id)
+      if (directoryHandle.value) {
+        try {
+          await removeNote(directoryHandle.value, contextNote)
+        } catch (error) {
+          if (error.name !== 'NotFoundError') throw error
+        }
+      }
+      notes.value = notes.value.filter((note) => note.id !== contextNote.id)
+    }
+
+    if (selectedContext.value?.toLocaleLowerCase() === key) {
+      selectedContext.value = null
+      await openDate(selectedDate.value)
+    }
+  }
+
+  async function deleteTag(name) {
+    await removeReferences(name, removeTagReference)
+  }
+
   function updateBlock(noteId, blockId, patch) {
     const note = notes.value.find((item) => item.id === noteId)
     if (!note) return
@@ -482,6 +538,8 @@ export function useSecondMind() {
     setView,
     openContext,
     updateContext,
+    deleteContext,
+    deleteTag,
     updateBlock,
     addBlock,
     removeBlock,

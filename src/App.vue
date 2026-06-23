@@ -317,6 +317,27 @@ async function createContext() {
   showContextDialog.value = false
 }
 
+async function deleteContext(name) {
+  const context = mind.getContext(name)
+  const detail = context?.count
+    ? ` Se eliminarán también sus ${pluralize(context.count, 'mención', 'menciones')}.`
+    : ''
+  if (!window.confirm(`¿Eliminar @${name}?${detail} Esta acción no se puede deshacer.`)) return
+  await mind.deleteContext(name)
+}
+
+async function deleteTag(name) {
+  const count = tags.value
+    .filter((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+    .reduce((total, item) => total + item.count, 0)
+  const detail = count
+    ? ` Se eliminará de ${pluralize(count, 'bloque')}.`
+    : ''
+  if (!window.confirm(`¿Eliminar #${name}?${detail} Esta acción no se puede deshacer.`)) return
+  await mind.deleteTag(name)
+  if (selectedTag.value?.toLocaleLowerCase() === name.toLocaleLowerCase()) selectedTag.value = null
+}
+
 async function chooseWorkspace() {
   connectionError.value = ''
   try {
@@ -437,32 +458,46 @@ onBeforeUnmount(() => {
           <span>CONTEXTOS</span>
           <button aria-label="Nuevo contexto" @click="showContextDialog = true">＋</button>
         </div>
-        <button
+        <div
           v-for="context in contextIndex.slice(0, 12)"
           :key="context.name"
-          class="context-link"
+          class="sidebar-entity-row"
           :class="{ active: selectedContext?.toLocaleLowerCase() === context.name.toLocaleLowerCase() }"
-          @click="openContext(context.name)"
         >
-          <span>
-            <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
-            @{{ context.name }}
-          </span>
-          <small>{{ context.count }}</small>
-        </button>
+          <button class="context-link" @click="openContext(context.name)">
+            <span>
+              <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
+              @{{ context.name }}
+            </span>
+            <small>{{ context.count }}</small>
+          </button>
+          <button
+            class="delete-entity-button"
+            :aria-label="`Eliminar contexto ${context.name}`"
+            :title="`Eliminar @${context.name}`"
+            @click="deleteContext(context.name)"
+          >×</button>
+        </div>
       </section>
 
       <section v-if="tags.length" class="sidebar-section tags-section">
         <div class="section-heading"><span>ETIQUETAS</span></div>
-        <button
+        <div
           v-for="tag in tags.slice(0, 8)"
           :key="tag.name"
-          class="tag-link"
+          class="sidebar-entity-row"
           :class="{ active: selectedTag === tag.name }"
-          @click="openTag(tag.name)"
         >
-          <span>#{{ tag.name }}</span><small>{{ tag.count }}</small>
-        </button>
+          <button class="tag-link" @click="openTag(tag.name)">
+            <span>#{{ tag.name }}</span><small>{{ tag.count }}</small>
+          </button>
+          <button
+            class="delete-entity-button"
+            :aria-label="`Eliminar etiqueta ${tag.name}`"
+            :title="`Eliminar #${tag.name}`"
+            @click="deleteTag(tag.name)"
+          >×</button>
+        </div>
       </section>
 
       <div class="sidebar-footer">
@@ -595,9 +630,16 @@ onBeforeUnmount(() => {
               </div>
               <div class="filter-summary">
                 <span>{{ pluralize(filteredTasks.length, 'resultado') }}</span>
-                <button v-if="hasTaskFilters" class="clear-filters-button" @click="clearTaskFilters">
-                  Limpiar filtros
-                </button>
+                <div>
+                  <button
+                    v-if="selectedTag"
+                    class="delete-filter-entity-button"
+                    @click="deleteTag(selectedTag)"
+                  >Eliminar #{{ selectedTag }}</button>
+                  <button v-if="hasTaskFilters" class="clear-filters-button" @click="clearTaskFilters">
+                    Limpiar filtros
+                  </button>
+                </div>
               </div>
             </div>
             <div v-if="filteredTasks.length" class="task-list">
@@ -734,6 +776,9 @@ onBeforeUnmount(() => {
                     <option v-for="(label, value) in contextTypes" :key="value" :value="value">{{ label }}</option>
                   </select>
                 </label>
+                <button class="delete-context-button" @click="deleteContext(activeContext.name)">
+                  Eliminar contexto
+                </button>
               </div>
             </div>
 

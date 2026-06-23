@@ -71,6 +71,29 @@ export function extractTags(markdown = '') {
   ]
 }
 
+export function removeContextReference(content = '', name = '') {
+  const key = name.trim().toLocaleLowerCase()
+  if (!key) return content
+
+  return content
+    .replace(/(^|[\s(])@([\p{L}\p{N}_/-]+)/gu, (match, prefix, value) =>
+      value.toLocaleLowerCase() === key ? prefix : match,
+    )
+    .replace(/\[\[([^\]\n]+)\]\]/g, (match, value) =>
+      value.trim().toLocaleLowerCase() === key ? '' : match,
+    )
+}
+
+export function removeTagReference(content = '', name = '') {
+  const key = name.trim().toLocaleLowerCase()
+  if (!key) return content
+
+  return content.replace(
+    /(^|[\s(])#([\p{L}\p{N}_/-]+)/gu,
+    (match, prefix, value) => value.toLocaleLowerCase() === key ? prefix : match,
+  )
+}
+
 export function excerpt(markdown = '', max = 120) {
   const clean = markdown
     .replace(FRONTMATTER_PATTERN, '')
