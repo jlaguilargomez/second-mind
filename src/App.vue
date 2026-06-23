@@ -14,6 +14,7 @@ import {
   serializeJournalShare,
   serializeNote,
 } from './lib/markdown'
+import { isTrackingTask } from './lib/taskClassification'
 import { contextTypes, useSecondMind } from './composables/useSecondMind'
 
 const mind = useSecondMind()
@@ -77,6 +78,7 @@ const pageTitle = computed(() => {
 
 const filteredTasks = computed(() =>
   tasks.value.filter((task) => {
+    if (isTrackingTask(task)) return false
     if (taskFilter.value === 'open' && task.checked) return false
     if (taskFilter.value === 'completed' && !task.checked) return false
     if (
@@ -157,16 +159,7 @@ const peopleContexts = computed(() =>
   contextIndex.value.filter((context) => context.contextType === 'person'),
 )
 const waitingTasks = computed(() =>
-  tasks.value.filter(
-    (task) =>
-      !task.checked &&
-      (task.tags.some((tag) => ['esperando', 'delegado', 'follow-up'].includes(tag.toLocaleLowerCase())) ||
-        task.contexts.some((name) =>
-          peopleContexts.value.some(
-            (person) => person.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
-          ),
-        )),
-  ),
+  tasks.value.filter((task) => !task.checked && isTrackingTask(task)),
 )
 const searchResults = computed(() => mind.search(searchQuery.value))
 const searchContextResults = computed(() => {
@@ -671,15 +664,15 @@ onBeforeUnmount(() => {
             <div class="page-heading">
               <p class="eyebrow">VISIÓN TRANSVERSAL</p>
               <h1>Seguimiento</h1>
-              <p>Proyectos, personas y compromisos pendientes en un único lugar.</p>
+              <p>Compromisos delegados o pendientes de terceros, separados de tus tareas.</p>
             </div>
 
             <section class="tracking-section">
-              <div class="section-title"><h2>Esperando o delegado</h2><span>{{ waitingTasks.length }}</span></div>
+              <div class="section-title"><h2>Delegado o esperando</h2><span>{{ waitingTasks.length }}</span></div>
               <article v-for="task in waitingTasks" :key="task.id" class="task-card compact">
                 <button
                   class="task-toggle"
-                  aria-label="Completar tarea"
+                  aria-label="Resolver seguimiento"
                   :aria-pressed="false"
                   @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
                 ></button>
@@ -697,7 +690,7 @@ onBeforeUnmount(() => {
                 <button class="reminder-button" @click="editReminder(task)">◷</button>
               </article>
               <p v-if="!waitingTasks.length" class="empty-copy">
-                Usa #esperando, #delegado o relaciona una tarea con una @persona.
+                Añade #delegado o #esperando a una tarea para verla aquí.
               </p>
             </section>
 
