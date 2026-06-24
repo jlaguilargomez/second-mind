@@ -161,7 +161,11 @@ test('la interfaz móvil usa iconos legibles y objetivos táctiles amplios', asy
   const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
 
   assert.match(styles, /\.mobile-menu-button\s*\{[\s\S]*width:\s*40px;[\s\S]*font-size:\s*21px;/)
-  assert.match(styles, /\.top-actions \.icon-button\s*\{[\s\S]*font-size:\s*25px;/)
+  assert.match(styles, /\.topbar\s*\{[\s\S]*gap:\s*8px;[\s\S]*overflow:\s*hidden;/)
+  assert.match(styles, /\.breadcrumbs\s*\{[\s\S]*max-width:\s*min\(38vw,\s*142px\);/)
+  assert.match(styles, /\.top-actions\s*\{[\s\S]*max-width:\s*calc\(100vw - 190px\);[\s\S]*overflow-x:\s*auto;/)
+  assert.match(styles, /\.top-actions \.icon-button\s*\{[\s\S]*width:\s*38px;[\s\S]*flex:\s*0 0 auto;[\s\S]*font-size:\s*23px;/)
+  assert.match(styles, /@media \(max-width:\s*390px\)/)
   assert.match(styles, /\.mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(6, 1fr\);/)
   assert.match(styles, /\.mobile-nav button span\s*\{\s*font-size:\s*24px;/)
   assert.match(styles, /\.task-toggle\s*\{\s*width:\s*24px;\s*height:\s*24px;/)
