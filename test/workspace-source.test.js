@@ -108,23 +108,26 @@ test('la interfaz permite recargar manualmente desde carpeta y evita llamar loca
   assert.match(composable, /'Guardado en carpeta'/)
   assert.match(composable, /'Modo local sin carpeta'/)
   assert.match(app, /function reloadWorkspace\(\)/)
-  assert.match(app, /Recargar carpeta/)
   assert.match(app, /Recargar desde carpeta/)
-  assert.match(app, /los Markdown de disco son la fuente principal/)
+  assert.match(app, /title="Recargar desde carpeta"/)
 })
 
-test('conectar carpeta e importar markdown son acciones visibles y separadas', async () => {
+test('conectar carpeta e importar markdown viven en la barra superior, no en el lateral', async () => {
   const [app, styles] = await Promise.all([
     readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
     readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
   ])
 
-  assert.match(app, /Carpeta local/)
-  assert.match(app, /Importación puntual/)
-  assert.match(app, /Importar Markdown \/ ZIP/)
+  assert.match(app, /title="Conectar carpeta local"/)
+  assert.match(app, /title="Importar Markdown o ZIP"/)
+  assert.match(app, /title="Importar carpeta Reflect"/)
   assert.match(app, /function importMarkdownFiles\(event\)/)
   assert.match(app, /@change="importMarkdownFiles"/)
+  assert.doesNotMatch(app, /Importar Markdown \/ ZIP/)
+  assert.doesNotMatch(app, /Importación puntual/)
+  assert.doesNotMatch(app, /class="workspace-button"/)
   assert.doesNotMatch(app, /class="floating-import"/)
-  assert.match(styles, /\.footer-label/)
+  assert.doesNotMatch(styles, /\.workspace-button/)
+  assert.doesNotMatch(styles, /\.footer-label/)
   assert.doesNotMatch(styles, /\.floating-import/)
 })

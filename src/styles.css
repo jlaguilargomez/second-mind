@@ -68,7 +68,7 @@ button {
 }
 .brand strong { display: block; font-family: var(--font-editor); font-size: 21px; font-weight: 680; letter-spacing: -.2px; }
 .brand span { display: block; margin-top: 1px; color: #77766f; font-size: 11px; }
-.today-button, .workspace-button, .primary-button {
+.today-button, .primary-button {
   border: 0; border-radius: 8px; background: var(--ink); color: white;
 }
 .today-button { display: flex; align-items: center; gap: 10px; padding: 11px 12px; font-size: 13px; font-weight: 650; }
@@ -151,13 +151,9 @@ kbd {
   border-top: 1px solid var(--line);
   background: var(--sidebar);
 }
-.privacy-note { margin: 0 3px 11px; color: #6f6e67; font-size: 10px; line-height: 1.45; }
 .sync-line { display: flex; align-items: center; gap: 7px; padding: 0 3px 10px; color: #74736c; font-size: 11px; }
 .sync-line i { width: 6px; height: 6px; border-radius: 50%; background: #7d9c8f; }
 .sync-line i.offline { background: var(--amber); }
-.footer-label { margin: 12px 3px 7px; color: #8a887f; font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-.workspace-button { width: 100%; padding: 10px; background: #5d756d; font-size: 11px; font-weight: 600; }
-.workspace-button.secondary { margin-top: 7px; border: 1px solid #aeb7b0; color: #5d756d; background: transparent; }
 .error { color: #9a4b45; font-size: 11px; line-height: 1.4; }
 
 .workspace { grid-column: 2; min-width: 0; min-height: 100vh; background: var(--paper); }
@@ -619,7 +615,6 @@ kbd {
   .breadcrumbs { min-width: 0; gap: 6px; }
   .breadcrumbs strong { max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .copy-section-button { padding: 6px 7px; }
-  .top-actions .icon-button:first-of-type { display: none; }
   .top-actions .icon-button {
     width: 40px;
     height: 40px;

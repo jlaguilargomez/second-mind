@@ -601,17 +601,10 @@ onBeforeUnmount(() => {
       </section>
 
       <div class="sidebar-footer">
-        <p class="privacy-note">Con carpeta conectada, los Markdown de disco son la fuente principal.</p>
         <div class="sync-line">
           <i :class="{ offline: !isOnline }"></i>{{ syncState }}
         </div>
-        <p class="footer-label">Carpeta local</p>
-        <button class="workspace-button" @click="chooseWorkspace">Conectar carpeta</button>
-        <button class="workspace-button secondary" @click="reloadWorkspace">Recargar carpeta</button>
         <p v-if="connectionError" class="error">{{ connectionError }}</p>
-        <p class="footer-label">Importación puntual</p>
-        <button class="workspace-button secondary" @click="importInput?.click()">Importar Markdown / ZIP</button>
-        <button class="workspace-button secondary" @click="importReflectDirectory">Importar carpeta Reflect</button>
         <p v-if="importError" class="error">{{ importError }}</p>
       </div>
     </aside>
@@ -648,6 +641,12 @@ onBeforeUnmount(() => {
           >♢</button>
           <button
             class="icon-button"
+            aria-label="Conectar carpeta local"
+            title="Conectar carpeta local"
+            @click="chooseWorkspace"
+          >⎋</button>
+          <button
+            class="icon-button"
             aria-label="Recargar desde carpeta"
             title="Recargar desde carpeta"
             @click="reloadWorkspace"
@@ -670,7 +669,6 @@ onBeforeUnmount(() => {
             title="Exportar workspace"
             @click="exportWorkspace"
           >↓</button>
-          <button class="primary-button" @click="chooseWorkspace">Conectar carpeta</button>
         </div>
       </header>
 
