@@ -96,6 +96,31 @@ export class LocalRepository extends NotesRepository {
     return note
   }
 
+  async saveNotes(notes, options = {}) {
+    await this.initialize()
+    const transaction = this.db.transaction([NOTES_STORE, OPERATIONS_STORE], 'readwrite')
+    const notesStore = transaction.objectStore(NOTES_STORE)
+    const operationsStore = transaction.objectStore(OPERATIONS_STORE)
+    const createdAt = new Date().toISOString()
+
+    for (const note of notes) {
+      notesStore.put(note)
+      if (options.enqueue !== false) {
+        operationsStore.put({
+          operationId: crypto.randomUUID(),
+          entityId: note.id,
+          type: 'upsert',
+          version: note.version,
+          payload: note.markdown,
+          createdAt,
+        })
+      }
+    }
+
+    await transactionDone(transaction)
+    return notes
+  }
+
   async deleteNote(id) {
     await this.initialize()
     const note = await this.getNote(id)

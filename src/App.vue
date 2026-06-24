@@ -51,6 +51,7 @@ const priorityRank = { high: 0, medium: 1, base: 2 }
 const reminderBlock = ref(null)
 const importInput = ref(null)
 const connectionError = ref('')
+const importError = ref('')
 const copyState = ref('idle')
 const isOnline = ref(navigator.onLine)
 const updateAvailable = ref(false)
@@ -408,6 +409,19 @@ async function reloadWorkspace() {
   }
 }
 
+async function importMarkdownFiles(event) {
+  importError.value = ''
+  const files = event.target.files
+  if (!files?.length) return
+  try {
+    await mind.importFiles(files)
+  } catch (error) {
+    importError.value = error.message
+  } finally {
+    event.target.value = ''
+  }
+}
+
 async function exportWorkspace() {
   const zip = new JSZip()
   for (const note of notes.value) {
@@ -570,9 +584,13 @@ onBeforeUnmount(() => {
         <div class="sync-line">
           <i :class="{ offline: !isOnline }"></i>{{ syncState }}
         </div>
+        <p class="footer-label">Carpeta local</p>
         <button class="workspace-button" @click="chooseWorkspace">Conectar carpeta</button>
         <button class="workspace-button secondary" @click="reloadWorkspace">Recargar carpeta</button>
         <p v-if="connectionError" class="error">{{ connectionError }}</p>
+        <p class="footer-label">Importación puntual</p>
+        <button class="workspace-button secondary" @click="importInput?.click()">Importar Markdown / ZIP</button>
+        <p v-if="importError" class="error">{{ importError }}</p>
       </div>
     </aside>
 
@@ -612,6 +630,12 @@ onBeforeUnmount(() => {
             title="Recargar desde carpeta"
             @click="reloadWorkspace"
           >↻</button>
+          <button
+            class="icon-button"
+            aria-label="Importar Markdown o ZIP"
+            title="Importar Markdown o ZIP"
+            @click="importInput?.click()"
+          >↥</button>
           <button
             class="icon-button"
             aria-label="Exportar workspace"
@@ -1135,15 +1159,8 @@ onBeforeUnmount(() => {
       type="file"
       accept=".md,.zip,text/markdown,application/zip"
       multiple
-      @change="mind.importFiles($event.target.files)"
+      @change="importMarkdownFiles"
     />
-
-    <button
-      class="floating-import"
-      aria-label="Importar Markdown"
-      title="Importar Markdown"
-      @click="importInput?.click()"
-    >↥</button>
 
     <div v-if="conflicts.length" class="conflict-banner">
       Hay {{ conflicts.length }} conflicto(s) conservado(s) para resolver cuando conectemos el servidor.

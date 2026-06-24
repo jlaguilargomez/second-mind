@@ -152,7 +152,7 @@ function blockFromLine(line) {
     const content = cleanHeadingContent(line.replace(/^#{1,3}\s+/, ''))
     return { ...createBlock('heading', content), level }
   }
-  const task = line.match(/^(\s*)-\s+\[([ xX])\]\s*(.*)$/)
+  const task = line.match(/^(\s*)[-+]\s+\[([ xX])\]\s*(.*)$/)
   if (task) {
     return {
       ...createBlock('task', task[3]),
@@ -160,7 +160,7 @@ function blockFromLine(line) {
       indent: Math.min(Math.floor(task[1].length / 2), 6),
     }
   }
-  const log = line.match(/^(\s*)-\s+(.*)$/)
+  const log = line.match(/^(\s*)[-+]\s+(.*)$/)
   if (log) {
     return {
       ...createBlock('log', log[2]),
@@ -271,7 +271,7 @@ export function parseMarkdown(markdown = '', options = {}) {
       continue
     }
 
-    if (!line.trim()) {
+    if (!line.trim() || /^\s*(?:-{3,}|\*{3,})\s*$/.test(line)) {
       current = null
       continue
     }

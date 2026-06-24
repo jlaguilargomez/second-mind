@@ -80,6 +80,11 @@ function normalizeImportedNote(note) {
   })
 }
 
+function importIdentity(note) {
+  if (note.kind === 'journal') return `journal:${note.date || note.filename}`
+  return `context:${note.title.toLocaleLowerCase()}`
+}
+
 export function useSecondMind() {
   const repository = new LocalRepository()
   const notes = ref([])
@@ -461,6 +466,7 @@ export function useSecondMind() {
   }
 
   async function importFiles(files) {
+    const imports = []
     for (const file of files) {
       if (file.name.toLowerCase().endsWith('.zip')) {
         const archive = await JSZip.loadAsync(file)
@@ -470,19 +476,41 @@ export function useSecondMind() {
         for (const entry of entries) {
           const filename = entry.name.split('/').pop()
           const markdown = await entry.async('string')
-          await importMarkdown(filename, markdown, Date.now())
+          imports.push(createImportedNote(filename, markdown, Date.now()))
         }
         continue
       }
       if (!file.name.toLowerCase().endsWith('.md')) continue
-      await importMarkdown(file.name, await file.text(), file.lastModified)
+      imports.push(createImportedNote(file.name, await file.text(), file.lastModified))
     }
-    await openDate(journals.value[0]?.date || isoDate())
+    if (!imports.length) return
+
+    const existingByIdentity = new Map(notes.value.map((note) => [importIdentity(note), note]))
+    const importsByIdentity = new Map()
+    for (const note of imports) {
+      const existing = existingByIdentity.get(importIdentity(note))
+      importsByIdentity.set(importIdentity(note), existing ? { ...note, id: existing.id } : note)
+    }
+
+    const importedNotes = [...importsByIdentity.values()]
+    const importedIds = new Set(importedNotes.map((note) => note.id))
+    const importedIdentities = new Set(importedNotes.map(importIdentity))
+    notes.value = [
+      ...notes.value.filter(
+        (note) => !importedIds.has(note.id) && !importedIdentities.has(importIdentity(note)),
+      ),
+      ...importedNotes,
+    ]
+    await repository.saveNotes(importedNotes)
+    if (directoryHandle.value) {
+      for (const note of importedNotes) await writeNote(directoryHandle.value, note)
+    }
+    await activateFirstAvailableNote({ createJournal: false })
   }
 
-  async function importMarkdown(filename, markdown, lastModified) {
+  function createImportedNote(filename, markdown, lastModified) {
     const date = filename.match(/\d{4}-\d{2}-\d{2}/)?.[0] || null
-    const note = normalizeNote({
+    return normalizeNote({
       id: undefined,
       kind: date ? 'journal' : 'context',
       filename,
@@ -490,9 +518,6 @@ export function useSecondMind() {
       markdown,
       updatedAt: new Date(lastModified || Date.now()).toISOString(),
     })
-    replaceNote(note)
-    await repository.saveNote(note)
-    if (directoryHandle.value) await writeNote(directoryHandle.value, note)
   }
 
   async function connectWorkspace() {

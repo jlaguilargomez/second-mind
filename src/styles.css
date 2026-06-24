@@ -147,6 +147,7 @@ kbd {
 .sync-line { display: flex; align-items: center; gap: 7px; padding: 0 3px 10px; color: #74736c; font-size: 11px; }
 .sync-line i { width: 6px; height: 6px; border-radius: 50%; background: #7d9c8f; }
 .sync-line i.offline { background: var(--amber); }
+.footer-label { margin: 12px 3px 7px; color: #8a887f; font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .workspace-button { width: 100%; padding: 10px; background: #5d756d; font-size: 11px; font-weight: 600; }
 .workspace-button.secondary { margin-top: 7px; border: 1px solid #aeb7b0; color: #5d756d; background: transparent; }
 .error { color: #9a4b45; font-size: 11px; line-height: 1.4; }
@@ -559,11 +560,6 @@ kbd {
 .loading-state { min-height: calc(100vh - 62px); display: grid; place-content: center; justify-items: center; color: #74736c; font-family: var(--font-ui); font-size: 14px; }
 .loading-mark { margin-bottom: 9px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-.floating-import {
-  position: fixed; right: 18px; bottom: 18px; z-index: 7; width: 35px; height: 35px;
-  border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: var(--paper);
-  box-shadow: 0 5px 18px rgba(49,46,40,.1);
-}
 .conflict-banner { position: fixed; z-index: 30; right: 20px; bottom: 20px; max-width: 360px; border-radius: 8px; padding: 11px; color: white; background: #9a633a; font-size: 9px; }
 .update-banner { position: fixed; z-index: 31; left: 50%; bottom: 22px; display: flex; align-items: center; gap: 8px; max-width: min(620px, calc(100vw - 30px)); transform: translateX(-50%); border: 1px solid #bfb8aa; border-radius: 10px; padding: 10px 12px; background: var(--paper); box-shadow: 0 10px 35px rgba(45,42,36,.18); font-size: 11px; }
 .update-banner span { flex: 1; }
@@ -668,5 +664,4 @@ kbd {
   .task-filter-selects { grid-template-columns: 1fr; }
   .filter-bar select { max-width: none; }
   .delete-entity-button { opacity: 1; }
-  .floating-import { display: none; }
 }

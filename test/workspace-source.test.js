@@ -14,6 +14,31 @@ test('la caché local puede reemplazarse por completo con las notas de la carpet
   assert.match(repository, /for \(const note of notes\) notesStore\.put\(note\)/)
 })
 
+test('las importaciones masivas se guardan en una sola transacción local', async () => {
+  const [repository, composable] = await Promise.all([
+    readFile(new URL('../src/repositories/LocalRepository.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(repository, /async saveNotes\(notes/)
+  assert.match(repository, /for \(const note of notes\)/)
+  assert.match(composable, /const imports = \[\]/)
+  assert.match(composable, /await repository\.saveNotes\(importedNotes\)/)
+  assert.doesNotMatch(composable, /async function importMarkdown/)
+})
+
+test('la importación usa identidad estable para evitar duplicados al reimportar Reflect', async () => {
+  const composable = await readFile(
+    new URL('../src/composables/useSecondMind.js', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(composable, /function importIdentity\(note\)/)
+  assert.match(composable, /journal:\$\{note\.date \|\| note\.filename\}/)
+  assert.match(composable, /context:\$\{note\.title\.toLocaleLowerCase\(\)\}/)
+  assert.match(composable, /existing \? \{ \.\.\.note, id: existing\.id \} : note/)
+})
+
 test('al restaurar una carpeta conectada, la carpeta reemplaza el estado de IndexedDB', async () => {
   const composable = await readFile(
     new URL('../src/composables/useSecondMind.js', import.meta.url),
@@ -55,4 +80,20 @@ test('la interfaz permite recargar manualmente desde carpeta y evita llamar loca
   assert.match(app, /Recargar carpeta/)
   assert.match(app, /Recargar desde carpeta/)
   assert.match(app, /los Markdown de disco son la fuente principal/)
+})
+
+test('conectar carpeta e importar markdown son acciones visibles y separadas', async () => {
+  const [app, styles] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /Carpeta local/)
+  assert.match(app, /Importación puntual/)
+  assert.match(app, /Importar Markdown \/ ZIP/)
+  assert.match(app, /function importMarkdownFiles\(event\)/)
+  assert.match(app, /@change="importMarkdownFiles"/)
+  assert.doesNotMatch(app, /class="floating-import"/)
+  assert.match(styles, /\.footer-label/)
+  assert.doesNotMatch(styles, /\.floating-import/)
 })

@@ -145,6 +145,25 @@ test('limpia el énfasis decorativo de encabezados exportados por Reflect', () =
   assert.equal(headingEmoji('🏎️ @motor'), '🏎️')
 })
 
+test('interpreta tareas y separadores exportados por Reflect', () => {
+  const parsed = parseMarkdown(`# JavierLeiva
+
++ [x] Confirmar solución sobre [[iam]]
+
+***
+
+## Notas
+
++ Revisar rutas de APIs`)
+
+  assert.equal(parsed.blocks.length, 4)
+  assert.equal(parsed.blocks[1].type, 'task')
+  assert.equal(parsed.blocks[1].checked, true)
+  assert.equal(parsed.blocks[2].type, 'heading')
+  assert.equal(parsed.blocks[3].type, 'log')
+  assert.equal(parsed.blocks.some((block) => block.content === '***'), false)
+})
+
 test('hereda el contexto del encabezado hasta la siguiente sección', () => {
   const parsed = parseMarkdown(`## **🏎️** @motor
 - Preparar swagger
