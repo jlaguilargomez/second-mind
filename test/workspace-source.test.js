@@ -1,0 +1,58 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+
+test('la caché local puede reemplazarse por completo con las notas de la carpeta', async () => {
+  const repository = await readFile(
+    new URL('../src/repositories/LocalRepository.js', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(repository, /async replaceAllNotes\(notes\)/)
+  assert.match(repository, /notesStore\.clear\(\)/)
+  assert.match(repository, /transaction\.objectStore\(OPERATIONS_STORE\)\.clear\(\)/)
+  assert.match(repository, /for \(const note of notes\) notesStore\.put\(note\)/)
+})
+
+test('al restaurar una carpeta conectada, la carpeta reemplaza el estado de IndexedDB', async () => {
+  const composable = await readFile(
+    new URL('../src/composables/useSecondMind.js', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(composable, /const workspaceRestored = await restoreWorkspace\(\)/)
+  assert.match(composable, /if \(workspaceRestored\) await loadWorkspaceFromDisk\(\)/)
+  assert.match(composable, /async function applyWorkspaceNotes\(diskNotes\)/)
+  assert.match(composable, /notes\.value = workspaceNotes/)
+  assert.match(composable, /await repository\.replaceAllNotes\(workspaceNotes\)/)
+})
+
+test('al conectar una carpeta, solo se exporta el estado actual si la carpeta está vacía', async () => {
+  const composable = await readFile(
+    new URL('../src/composables/useSecondMind.js', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(composable, /const diskNotes = await readWorkspace\(handle\)/)
+  assert.match(composable, /if \(diskNotes\.length\) \{\s*await applyWorkspaceNotes\(diskNotes\)/)
+  assert.match(composable, /else \{\s*const localNotes = notes\.value\.map\(\(note\) => normalizeNote\(note\)\)/)
+  assert.match(composable, /for \(const note of localNotes\) await writeNote\(handle, note\)/)
+  assert.match(composable, /await repository\.replaceAllNotes\(localNotes\)/)
+})
+
+test('la interfaz permite recargar manualmente desde carpeta y evita llamar local al estado conectado', async () => {
+  const [app, composable] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(composable, /async function reloadWorkspaceFromDisk\(\)/)
+  assert.match(composable, /activateFirstAvailableNote\(\{ createJournal: false \}\)/)
+  assert.match(composable, /activeNoteId\.value = null/)
+  assert.match(composable, /'Guardado en carpeta'/)
+  assert.match(composable, /'Modo local sin carpeta'/)
+  assert.match(app, /function reloadWorkspace\(\)/)
+  assert.match(app, /Recargar carpeta/)
+  assert.match(app, /Recargar desde carpeta/)
+  assert.match(app, /los Markdown de disco son la fuente principal/)
+})

@@ -90,10 +90,15 @@ export function useSecondMind() {
   const loading = ref(true)
   const syncState = ref('Preparando…')
   const directoryHandle = ref(null)
-  const workspaceName = ref('Local · offline')
+  const workspaceName = ref('Local sin carpeta')
   const conflicts = ref([])
   const notifiedReminders = new Set()
   const saveTimers = new Map()
+
+  function settledSyncState() {
+    if (directoryHandle.value) return 'Guardado en carpeta'
+    return navigator.onLine ? 'Modo local sin carpeta' : 'Sin conexión · modo local'
+  }
 
   const activeNote = computed(() => notes.value.find((note) => note.id === activeNoteId.value))
   const journals = computed(() =>
@@ -184,10 +189,12 @@ export function useSecondMind() {
       if (legacy) localStorage.removeItem(LEGACY_LOCAL_KEY)
     }
     notes.value = stored.map(normalizeNote)
-    await restoreWorkspace()
-    await openDate(selectedDate.value)
+    const workspaceRestored = await restoreWorkspace()
+    if (workspaceRestored) await loadWorkspaceFromDisk()
+    if (workspaceRestored) await activateFirstAvailableNote({ createJournal: false })
+    else await openDate(selectedDate.value)
     loading.value = false
-    syncState.value = navigator.onLine ? 'Guardado local' : 'Sin conexión'
+    syncState.value = settledSyncState()
     checkDueNotifications()
   }
 
@@ -207,6 +214,24 @@ export function useSecondMind() {
     ]
   }
 
+  async function applyWorkspaceNotes(diskNotes) {
+    for (const timer of saveTimers.values()) clearTimeout(timer)
+    saveTimers.clear()
+    const workspaceNotes = diskNotes.map((note) => normalizeImportedNote(note))
+    notes.value = workspaceNotes
+    await repository.replaceAllNotes(workspaceNotes)
+    return workspaceNotes
+  }
+
+  async function loadWorkspaceFromDisk() {
+    if (!directoryHandle.value) return []
+    syncState.value = 'Recargando carpeta…'
+    const diskNotes = await readWorkspace(directoryHandle.value)
+    const workspaceNotes = await applyWorkspaceNotes(diskNotes)
+    syncState.value = settledSyncState()
+    return workspaceNotes
+  }
+
   function prepareNoteForSave(note, expectedVersion) {
     const now = new Date().toISOString()
     const saved = normalizeNote({
@@ -220,11 +245,11 @@ export function useSecondMind() {
   }
 
   async function savePreparedNote(saved, expectedVersion) {
-    syncState.value = navigator.onLine ? 'Guardando…' : 'Pendiente de sincronizar'
+    syncState.value = directoryHandle.value ? 'Guardando en carpeta…' : 'Guardando local…'
     try {
       await repository.saveNote(saved, { expectedVersion })
       if (directoryHandle.value) await writeNote(directoryHandle.value, saved)
-      syncState.value = navigator.onLine ? 'Guardado local' : 'Pendiente de sincronizar'
+      syncState.value = settledSyncState()
     } catch (error) {
       if (error.name === 'VersionConflictError') {
         conflicts.value.push({ local: saved, remote: error.remote })
@@ -303,6 +328,27 @@ export function useSecondMind() {
     activeNoteId.value = note.id
     selectedContext.value = name
     currentView.value = 'context'
+  }
+
+  async function activateFirstAvailableNote({ createJournal = true } = {}) {
+    const firstJournal = journals.value[0]
+    if (firstJournal) {
+      await openDate(firstJournal.date || selectedDate.value)
+      return
+    }
+
+    const firstContext = contextNotes.value[0]
+    if (firstContext) {
+      activeNoteId.value = firstContext.id
+      selectedContext.value = firstContext.title
+      currentView.value = 'context'
+      return
+    }
+
+    activeNoteId.value = null
+    selectedContext.value = null
+    currentView.value = 'journal'
+    if (createJournal) await openDate(selectedDate.value)
   }
 
   function updateContext(noteId, patch) {
@@ -456,12 +502,16 @@ export function useSecondMind() {
     directoryHandle.value = handle
     workspaceName.value = handle.name
     const diskNotes = await readWorkspace(handle)
-    for (const diskNote of diskNotes) {
-      const note = normalizeImportedNote(diskNote)
-      replaceNote(note)
-      await repository.saveNote(note)
+    if (diskNotes.length) {
+      await applyWorkspaceNotes(diskNotes)
+    } else {
+      const localNotes = notes.value.map((note) => normalizeNote(note))
+      notes.value = localNotes
+      for (const note of localNotes) await writeNote(handle, note)
+      await repository.replaceAllNotes(localNotes)
     }
-    for (const note of notes.value) await writeNote(handle, note)
+    await activateFirstAvailableNote({ createJournal: false })
+    syncState.value = settledSyncState()
   }
 
   async function restoreWorkspace() {
@@ -470,10 +520,18 @@ export function useSecondMind() {
       if (handle && (await verifyPermission(handle, true))) {
         directoryHandle.value = handle
         workspaceName.value = handle.name
+        return true
       }
     } catch {
-      // IndexedDB remains the source of truth when folder permission is unavailable.
+      syncState.value = 'Modo local sin carpeta'
     }
+    return false
+  }
+
+  async function reloadWorkspaceFromDisk() {
+    if (!directoryHandle.value) throw new Error('No hay ninguna carpeta conectada.')
+    await loadWorkspaceFromDisk()
+    await activateFirstAvailableNote({ createJournal: false })
   }
 
   async function requestNotificationPermission() {
@@ -522,11 +580,11 @@ export function useSecondMind() {
   }
 
   window.addEventListener('online', () => {
-    syncState.value = 'Guardado local'
+    syncState.value = settledSyncState()
     checkDueNotifications()
   })
   window.addEventListener('offline', () => {
-    syncState.value = 'Sin conexión'
+    syncState.value = settledSyncState()
   })
 
   return {
@@ -560,6 +618,7 @@ export function useSecondMind() {
     changeBlockType,
     importFiles,
     connectWorkspace,
+    reloadWorkspaceFromDisk,
     requestNotificationPermission,
     checkDueNotifications,
     openBlock,

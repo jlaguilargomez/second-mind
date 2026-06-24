@@ -148,6 +148,7 @@ kbd {
 .sync-line i { width: 6px; height: 6px; border-radius: 50%; background: #7d9c8f; }
 .sync-line i.offline { background: var(--amber); }
 .workspace-button { width: 100%; padding: 10px; background: #5d756d; font-size: 11px; font-weight: 600; }
+.workspace-button.secondary { margin-top: 7px; border: 1px solid #aeb7b0; color: #5d756d; background: transparent; }
 .error { color: #9a4b45; font-size: 11px; line-height: 1.4; }
 
 .workspace { grid-column: 2; min-width: 0; min-height: 100vh; background: var(--paper); }

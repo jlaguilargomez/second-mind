@@ -135,6 +135,16 @@ export class LocalRepository extends NotesRepository {
     await transactionDone(transaction)
   }
 
+  async replaceAllNotes(notes) {
+    await this.initialize()
+    const transaction = this.db.transaction([NOTES_STORE, OPERATIONS_STORE], 'readwrite')
+    const notesStore = transaction.objectStore(NOTES_STORE)
+    notesStore.clear()
+    transaction.objectStore(OPERATIONS_STORE).clear()
+    for (const note of notes) notesStore.put(note)
+    await transactionDone(transaction)
+  }
+
   async getSetting(key) {
     await this.initialize()
     return requestResult(this.db.transaction(SETTINGS_STORE).objectStore(SETTINGS_STORE).get(key))

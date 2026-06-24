@@ -399,6 +399,15 @@ async function chooseWorkspace() {
   }
 }
 
+async function reloadWorkspace() {
+  connectionError.value = ''
+  try {
+    await mind.reloadWorkspaceFromDisk()
+  } catch (error) {
+    connectionError.value = error.message
+  }
+}
+
 async function exportWorkspace() {
   const zip = new JSZip()
   for (const note of notes.value) {
@@ -557,11 +566,12 @@ onBeforeUnmount(() => {
       </section>
 
       <div class="sidebar-footer">
-        <p class="privacy-note">Los datos permanecen en este dispositivo salvo exportación o carpeta conectada.</p>
+        <p class="privacy-note">Con carpeta conectada, los Markdown de disco son la fuente principal.</p>
         <div class="sync-line">
           <i :class="{ offline: !isOnline }"></i>{{ syncState }}
         </div>
         <button class="workspace-button" @click="chooseWorkspace">Conectar carpeta</button>
+        <button class="workspace-button secondary" @click="reloadWorkspace">Recargar carpeta</button>
         <p v-if="connectionError" class="error">{{ connectionError }}</p>
       </div>
     </aside>
@@ -596,6 +606,12 @@ onBeforeUnmount(() => {
             title="Activar notificaciones"
             @click="enableNotifications"
           >♢</button>
+          <button
+            class="icon-button"
+            aria-label="Recargar desde carpeta"
+            title="Recargar desde carpeta"
+            @click="reloadWorkspace"
+          >↻</button>
           <button
             class="icon-button"
             aria-label="Exportar workspace"
