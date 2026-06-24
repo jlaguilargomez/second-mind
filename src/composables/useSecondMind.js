@@ -142,7 +142,7 @@ export function useSecondMind() {
           }
           entry.count += 1
           if (block.type === 'task' && !block.checked) entry.openTasks += 1
-          entry.blocks.push({ ...block, noteId: note.id, noteDate: note.date })
+          entry.blocks.push({ ...block, noteId: note.id, noteDate: note.date, noteTitle: note.title })
           index.set(key, entry)
         }
       }
@@ -196,32 +196,51 @@ export function useSecondMind() {
     else notes.value.push(note)
   }
 
+  function replaceNotes(updatedNotes) {
+    if (!updatedNotes.length) return
+    const updates = new Map(updatedNotes.map((note) => [note.id, note]))
+    const existingIds = new Set(notes.value.map((note) => note.id))
+    notes.value = [
+      ...notes.value.map((note) => updates.get(note.id) || note),
+      ...updatedNotes.filter((note) => !existingIds.has(note.id)),
+    ]
+  }
+
+  function prepareNoteForSave(note, expectedVersion) {
+    const now = new Date().toISOString()
+    const saved = normalizeNote({
+      ...note,
+      markdown: undefined,
+      updatedAt: now,
+      version: (expectedVersion ?? note.version ?? 0) + 1,
+    })
+    saved.markdown = serializeNote(saved)
+    return { saved, expectedVersion: expectedVersion ?? 0 }
+  }
+
+  async function savePreparedNote(saved, expectedVersion) {
+    syncState.value = navigator.onLine ? 'Guardando…' : 'Pendiente de sincronizar'
+    try {
+      await repository.saveNote(saved, { expectedVersion })
+      if (directoryHandle.value) await writeNote(directoryHandle.value, saved)
+      syncState.value = navigator.onLine ? 'Guardado local' : 'Pendiente de sincronizar'
+    } catch (error) {
+      if (error.name === 'VersionConflictError') {
+        conflicts.value.push({ local: saved, remote: error.remote })
+        syncState.value = 'Conflicto pendiente'
+      } else {
+        syncState.value = 'Error al guardar'
+        throw error
+      }
+    }
+  }
+
   async function persistNote(note, { immediate = false } = {}) {
     const execute = async () => {
       const existing = notes.value.find((item) => item.id === note.id)
-      const now = new Date().toISOString()
-      const saved = normalizeNote({
-        ...note,
-        markdown: undefined,
-        updatedAt: now,
-        version: (existing?.version || note.version || 0) + 1,
-      })
-      saved.markdown = serializeNote(saved)
+      const { saved, expectedVersion } = prepareNoteForSave(note, existing?.version || note.version)
       replaceNote(saved)
-      syncState.value = navigator.onLine ? 'Guardando…' : 'Pendiente de sincronizar'
-      try {
-        await repository.saveNote(saved, { expectedVersion: saved.version - 1 })
-        if (directoryHandle.value) await writeNote(directoryHandle.value, saved)
-        syncState.value = navigator.onLine ? 'Guardado local' : 'Pendiente de sincronizar'
-      } catch (error) {
-        if (error.name === 'VersionConflictError') {
-          conflicts.value.push({ local: saved, remote: error.remote })
-          syncState.value = 'Conflicto pendiente'
-        } else {
-          syncState.value = 'Error al guardar'
-          throw error
-        }
-      }
+      await savePreparedNote(saved, expectedVersion)
     }
 
     clearTimeout(saveTimers.get(note.id))
@@ -306,9 +325,10 @@ export function useSecondMind() {
       })
       .filter(Boolean)
 
-    for (const note of affected) {
-      replaceNote(note)
-      await persistNote(note, { immediate: true })
+    const prepared = affected.map((note) => prepareNoteForSave(note, note.version))
+    replaceNotes(prepared.map(({ saved }) => saved))
+    for (const { saved, expectedVersion } of prepared) {
+      await savePreparedNote(saved, expectedVersion)
     }
   }
 
@@ -487,14 +507,7 @@ export function useSecondMind() {
   }
 
   function contextBlocks(name) {
-    return sortContextBlocksByDate(
-      notes.value.flatMap((note) =>
-        projectContextBlocks(
-          allBlocks.value.filter((block) => block.noteId === note.id),
-          name,
-        ),
-      ),
-    )
+    return sortContextBlocksByDate(projectContextBlocks(allBlocks.value, name))
   }
 
   function search(query) {

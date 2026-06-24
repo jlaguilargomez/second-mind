@@ -26,3 +26,15 @@ test('la interfaz confirma y expone el borrado de contextos y etiquetas', async 
   assert.match(app, /Eliminar contexto/)
   assert.match(app, /Eliminar #\{\{ selectedTag \}\}/)
 })
+
+test('el borrado de referencias actualiza notas afectadas en lote', async () => {
+  const composable = await readFile(
+    new URL('../src/composables/useSecondMind.js', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(composable, /function replaceNotes\(updatedNotes\)/)
+  assert.match(composable, /const prepared = affected\.map/)
+  assert.match(composable, /replaceNotes\(prepared\.map/)
+  assert.doesNotMatch(composable, /for \(const note of affected\) \{[\s\S]*replaceNote\(note\)/)
+})

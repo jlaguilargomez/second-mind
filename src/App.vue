@@ -13,6 +13,7 @@ import {
   serializeContextShare,
   serializeJournalShare,
   serializeNote,
+  sortContextBlocksByDate,
 } from './lib/markdown'
 import { isTrackingTask } from './lib/taskClassification'
 import { contextTypes, useSecondMind } from './composables/useSecondMind'
@@ -173,17 +174,14 @@ const mainMissions = computed(() =>
   contextIndex.value
     .filter((context) => (context.contextType || 'project') === 'project')
     .map((context) => {
-      const missionTasks = tasks.value.filter((task) =>
-        task.contexts.some(
-          (name) => name.toLocaleLowerCase() === context.name.toLocaleLowerCase(),
-        ),
-      )
+      const contextBlocks = context.blocks || []
+      const missionTasks = contextBlocks.filter((block) => block.type === 'task')
       const completedTasks = missionTasks.filter((task) => task.checked).length
       const upcomingTasks = missionTasks
         .filter((task) => !task.checked && task.reminder)
         .sort((a, b) => (a.reminder || '').localeCompare(b.reminder || ''))
         .slice(0, 3)
-      const recentBlocks = mind.contextBlocks(context.name)
+      const recentBlocks = sortContextBlocksByDate(contextBlocks)
         .filter((block) => block.content?.trim())
         .slice(0, 3)
 

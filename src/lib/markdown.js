@@ -396,9 +396,10 @@ export function serializeNote(note) {
 }
 
 export function normalizeNote(note) {
-  const parsed = parseMarkdown(note.markdown || '', {
-    fallbackTitle: note.title || note.filename?.replace(/\.md$/i, '') || 'Sin título',
-  })
+  const fallbackTitle = note.title || note.filename?.replace(/\.md$/i, '') || 'Sin título'
+  const parsed = Array.isArray(note.blocks)
+    ? { attributes: {}, title: fallbackTitle, blocks: note.blocks }
+    : parseMarkdown(note.markdown || '', { fallbackTitle })
   const dateMatch = note.date || note.filename?.match(/\d{4}-\d{2}-\d{2}/)?.[0]
   const now = new Date().toISOString()
   const normalized = {
