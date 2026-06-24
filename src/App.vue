@@ -422,6 +422,15 @@ async function importMarkdownFiles(event) {
   }
 }
 
+async function importReflectDirectory() {
+  importError.value = ''
+  try {
+    await mind.importDirectory()
+  } catch (error) {
+    if (error.name !== 'AbortError') importError.value = error.message
+  }
+}
+
 async function exportWorkspace() {
   const zip = new JSZip()
   for (const note of notes.value) {
@@ -590,6 +599,7 @@ onBeforeUnmount(() => {
         <p v-if="connectionError" class="error">{{ connectionError }}</p>
         <p class="footer-label">Importación puntual</p>
         <button class="workspace-button secondary" @click="importInput?.click()">Importar Markdown / ZIP</button>
+        <button class="workspace-button secondary" @click="importReflectDirectory">Importar carpeta Reflect</button>
         <p v-if="importError" class="error">{{ importError }}</p>
       </div>
     </aside>
@@ -636,6 +646,12 @@ onBeforeUnmount(() => {
             title="Importar Markdown o ZIP"
             @click="importInput?.click()"
           >↥</button>
+          <button
+            class="icon-button"
+            aria-label="Importar carpeta Reflect"
+            title="Importar carpeta Reflect"
+            @click="importReflectDirectory"
+          >⇪</button>
           <button
             class="icon-button"
             aria-label="Exportar workspace"

@@ -21,6 +21,7 @@ import {
 import { LocalRepository } from '../repositories/LocalRepository'
 import {
   getDirectoryHandle,
+  readMarkdownTree,
   readWorkspace,
   removeNote,
   saveDirectoryHandle,
@@ -476,13 +477,30 @@ export function useSecondMind() {
         for (const entry of entries) {
           const filename = entry.name.split('/').pop()
           const markdown = await entry.async('string')
-          imports.push(createImportedNote(filename, markdown, Date.now()))
+          imports.push(createImportedNote(filename, markdown, Date.now(), entry.name))
         }
         continue
       }
       if (!file.name.toLowerCase().endsWith('.md')) continue
-      imports.push(createImportedNote(file.name, await file.text(), file.lastModified))
+      imports.push(
+        createImportedNote(file.name, await file.text(), file.lastModified, file.webkitRelativePath),
+      )
     }
+    await importNotes(imports)
+  }
+
+  async function importDirectory() {
+    if (!window.showDirectoryPicker) throw new Error('Este navegador no permite importar carpetas.')
+    const handle = await window.showDirectoryPicker({ mode: 'read' })
+    if (!(await verifyPermission(handle))) return
+    const markdownFiles = await readMarkdownTree(handle)
+    const imports = markdownFiles.map((file) =>
+      createImportedNote(file.filename, file.markdown, file.updatedAt, file.path),
+    )
+    await importNotes(imports)
+  }
+
+  async function importNotes(imports) {
     if (!imports.length) return
 
     const existingByIdentity = new Map(notes.value.map((note) => [importIdentity(note), note]))
@@ -508,8 +526,8 @@ export function useSecondMind() {
     await activateFirstAvailableNote({ createJournal: false })
   }
 
-  function createImportedNote(filename, markdown, lastModified) {
-    const date = filename.match(/\d{4}-\d{2}-\d{2}/)?.[0] || null
+  function createImportedNote(filename, markdown, lastModified, sourcePath = filename) {
+    const date = sourcePath.match(/\d{4}-\d{2}-\d{2}/)?.[0] || null
     return normalizeNote({
       id: undefined,
       kind: date ? 'journal' : 'context',
@@ -642,6 +660,7 @@ export function useSecondMind() {
     removeBlock,
     changeBlockType,
     importFiles,
+    importDirectory,
     connectWorkspace,
     reloadWorkspaceFromDisk,
     requestNotificationPermission,

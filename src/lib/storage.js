@@ -78,6 +78,26 @@ export async function readWorkspace(root) {
   return notes
 }
 
+export async function readMarkdownTree(root, prefix = '') {
+  const notes = []
+  for await (const [name, handle] of root.entries()) {
+    const path = prefix ? `${prefix}/${name}` : name
+    if (handle.kind === 'directory') {
+      notes.push(...(await readMarkdownTree(handle, path)))
+      continue
+    }
+    if (!name.toLowerCase().endsWith('.md')) continue
+    const file = await handle.getFile()
+    notes.push({
+      path,
+      filename: name,
+      markdown: await file.text(),
+      updatedAt: file.lastModified,
+    })
+  }
+  return notes
+}
+
 export async function writeNote(root, note) {
   const directory = await root.getDirectoryHandle(note.kind === 'context' ? 'contexts' : 'journals', {
     create: true,

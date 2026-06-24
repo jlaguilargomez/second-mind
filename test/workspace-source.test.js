@@ -27,6 +27,23 @@ test('las importaciones masivas se guardan en una sola transacción local', asyn
   assert.doesNotMatch(composable, /async function importMarkdown/)
 })
 
+test('la importación de carpeta Reflect lee markdowns recursivamente', async () => {
+  const [storage, composable, app] = await Promise.all([
+    readFile(new URL('../src/lib/storage.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(storage, /export async function readMarkdownTree\(root/)
+  assert.match(storage, /readMarkdownTree\(handle, path\)/)
+  assert.match(composable, /async function importDirectory\(\)/)
+  assert.match(composable, /showDirectoryPicker\(\{ mode: 'read' \}\)/)
+  assert.match(composable, /const markdownFiles = await readMarkdownTree\(handle\)/)
+  assert.match(composable, /createImportedNote\(file\.filename, file\.markdown, file\.updatedAt, file\.path\)/)
+  assert.match(app, /Importar carpeta Reflect/)
+  assert.match(app, /function importReflectDirectory\(\)/)
+})
+
 test('la importación usa identidad estable para evitar duplicados al reimportar Reflect', async () => {
   const composable = await readFile(
     new URL('../src/composables/useSecondMind.js', import.meta.url),
