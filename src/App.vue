@@ -77,6 +77,8 @@ const pageTitle = computed(() => {
   if (currentView.value === 'agenda') return 'Agenda'
   if (currentView.value === 'missions') return 'Misiones Principales'
   if (currentView.value === 'tracking') return 'Seguimiento'
+  if (currentView.value === 'contexts') return 'Contextos'
+  if (currentView.value === 'tags') return 'Etiquetas'
   return 'Second Mind'
 })
 
@@ -538,12 +540,20 @@ onBeforeUnmount(() => {
           <span>◎</span> Seguimiento
           <small>{{ waitingTasks.length }}</small>
         </button>
+        <button :class="{ active: currentView === 'contexts' }" @click="navigate('contexts')">
+          <span>@</span> Contextos
+          <small>{{ contextIndex.length }}</small>
+        </button>
+        <button :class="{ active: currentView === 'tags' }" @click="navigate('tags')">
+          <span>#</span> Etiquetas
+          <small>{{ tags.length }}</small>
+        </button>
         <button @click="openSearch"><span>⌕</span> Buscar <kbd>⌘ K</kbd></button>
       </nav>
 
       <section class="sidebar-section contexts-section">
         <div class="section-heading">
-          <span>CONTEXTOS</span>
+          <button class="heading-link" @click="navigate('contexts')">CONTEXTOS</button>
           <button aria-label="Nuevo contexto" @click="showContextDialog = true">＋</button>
         </div>
         <div
@@ -569,7 +579,9 @@ onBeforeUnmount(() => {
       </section>
 
       <section v-if="tags.length" class="sidebar-section tags-section">
-        <div class="section-heading"><span>ETIQUETAS</span></div>
+        <div class="section-heading">
+          <button class="heading-link" @click="navigate('tags')">ETIQUETAS</button>
+        </div>
         <div
           v-for="tag in tags.slice(0, 8)"
           :key="tag.name"
@@ -936,6 +948,50 @@ onBeforeUnmount(() => {
                 Crea contextos de tipo Persona para reunir conversaciones, acuerdos y seguimientos.
               </p>
             </section>
+          </template>
+
+          <template v-else-if="currentView === 'contexts'">
+            <div class="page-heading">
+              <p class="eyebrow">MAPA COMPLETO</p>
+              <h1>Contextos</h1>
+              <p>{{ pluralize(contextIndex.length, 'contexto') }} conectados con notas, tareas y actividad.</p>
+            </div>
+
+            <div v-if="contextIndex.length" class="entity-directory context-directory">
+              <button
+                v-for="context in contextIndex"
+                :key="context.name"
+                :class="`context-${context.color || 'sage'}`"
+                @click="openContext(context.name)"
+              >
+                <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
+                <span>
+                  <strong>@{{ context.name }}</strong>
+                  <small>{{ contextTypes[context.contextType || 'project'] }} · {{ context.openTasks }} abiertas · {{ context.count }} menciones</small>
+                </span>
+              </button>
+            </div>
+            <div v-else class="empty-state">Aún no hay contextos.</div>
+          </template>
+
+          <template v-else-if="currentView === 'tags'">
+            <div class="page-heading">
+              <p class="eyebrow">ÍNDICE COMPLETO</p>
+              <h1>Etiquetas</h1>
+              <p>{{ pluralize(tags.length, 'etiqueta') }} para filtrar tareas y entradas.</p>
+            </div>
+
+            <div v-if="tags.length" class="entity-directory tag-directory">
+              <button
+                v-for="tag in tags"
+                :key="tag.name"
+                :class="{ active: selectedTag === tag.name }"
+                @click="openTag(tag.name)"
+              >
+                <span><strong>#{{ tag.name }}</strong><small>{{ pluralize(tag.count, 'mención', 'menciones') }}</small></span>
+              </button>
+            </div>
+            <div v-else class="empty-state">Aún no hay etiquetas.</div>
           </template>
 
           <template v-else-if="currentView === 'context' && activeContext">

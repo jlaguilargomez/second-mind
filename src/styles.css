@@ -104,6 +104,14 @@ kbd {
   color: #7f7d75; font-size: 10px; font-weight: 720; letter-spacing: 1.25px;
 }
 .section-heading button { border: 0; background: transparent; font-size: 16px; }
+.section-heading .heading-link {
+  padding: 0;
+  color: inherit;
+  font-size: 10px;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+.section-heading .heading-link:hover { color: var(--ink); }
 .contexts-section {
   flex: 1 1 31vh;
   max-height: 31vh;
@@ -378,6 +386,25 @@ kbd {
 .agenda-item > button { border: 0; background: transparent; text-align: left; font-family: var(--font-editor); font-size: 17px; }
 
 .mission-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.entity-directory {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.entity-directory > button {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+  background: rgba(255,255,255,.34); text-align: left;
+}
+.entity-directory > button:hover,
+.entity-directory > button.active { border-color: #bcb5a9; background: rgba(255,255,255,.72); }
+.entity-directory span { min-width: 0; }
+.entity-directory strong, .entity-directory small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.entity-directory strong { font-size: 13px; }
+.entity-directory small { margin-top: 4px; color: #74736c; font-size: 10px; }
+.tag-directory > button { color: var(--violet); background: var(--violet-soft); }
+.tag-directory > button:hover,
+.tag-directory > button.active { border-color: #c3bddf; background: #eee9fa; }
 .mission-card {
   display: grid; gap: 14px; align-content: start;
   border: 1px solid rgba(90,86,74,.13); border-radius: 12px; padding: 16px;
@@ -652,6 +679,7 @@ kbd {
   .context-hero { padding: 17px; }
   .context-hero > span { width: 49px; height: 49px; font-size: 23px; }
   .mission-board { grid-template-columns: 1fr; }
+  .entity-directory { grid-template-columns: 1fr; }
   .mission-card-main strong { font-size: 21px; }
   .tracking-grid { grid-template-columns: 1fr; }
   .task-card { grid-template-columns: 24px minmax(0, 1fr); }

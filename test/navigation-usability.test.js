@@ -136,6 +136,22 @@ test('contextos y etiquetas desplazan su contenido sin invadir el pie lateral', 
   assert.match(styles, /overscroll-behavior:\s*contain/)
 })
 
+test('contextos y etiquetas tienen vistas completas desde la navegación lateral', async () => {
+  const [app, styles] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /currentView === 'contexts'/)
+  assert.match(app, /currentView === 'tags'/)
+  assert.match(app, /navigate\('contexts'\)/)
+  assert.match(app, /navigate\('tags'\)/)
+  assert.match(app, /v-for="context in contextIndex"/)
+  assert.match(app, /v-for="tag in tags"/)
+  assert.match(styles, /\.entity-directory/)
+  assert.match(styles, /\.tag-directory/)
+})
+
 test('la interfaz móvil usa iconos legibles y objetivos táctiles amplios', async () => {
   const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
 
