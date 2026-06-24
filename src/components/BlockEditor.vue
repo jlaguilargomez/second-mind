@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import RichText from './RichText.vue'
 import { formatReminderDate } from '../lib/markdown'
 
@@ -22,7 +22,10 @@ const emit = defineEmits([
 const activeSuggestion = ref(null)
 const focusedBlockId = ref(null)
 const activeSuggestionIndex = ref(0)
+const mobileToolbarBlockId = ref(null)
+const isMobileViewport = ref(false)
 const inputRefs = new Map()
+let viewportQuery = null
 
 const contextNames = computed(() => props.contexts.map((item) => item.name))
 const tagNames = computed(() => props.tags.map((item) => item.name))
@@ -55,6 +58,7 @@ function resize(event) {
 }
 
 function focusBlock(blockId) {
+  if (focusedBlockId.value !== blockId) mobileToolbarBlockId.value = null
   focusedBlockId.value = blockId
   nextTick(() => {
     const input = inputRefs.get(blockId)
@@ -71,6 +75,7 @@ function focusBlock(blockId) {
 function handleBlur(blockId) {
   window.setTimeout(() => {
     if (activeSuggestion.value?.blockId === blockId) return
+    if (mobileToolbarBlockId.value === blockId) return
     if (focusedBlockId.value === blockId) focusedBlockId.value = null
   }, 100)
 }
@@ -112,6 +117,7 @@ function addBlockAfter(blockId, type = 'log', content = '', options = {}) {
 
 function changeType(block, type) {
   emit('change-type', block.id, type)
+  if (isMobileViewport.value) mobileToolbarBlockId.value = null
   focusBlock(block.id)
 }
 
@@ -121,6 +127,7 @@ function cyclePriority(block) {
   emit('update-block', block.id, {
     priority: priorities[(currentIndex + 1) % priorities.length],
   })
+  if (isMobileViewport.value) mobileToolbarBlockId.value = null
 }
 
 function changeIndent(block, index, direction) {
@@ -128,6 +135,7 @@ function changeIndent(block, index, direction) {
   const currentIndent = block.indent || 0
   if (direction < 0) {
     emit('update-block', block.id, { indent: Math.max(currentIndent - 1, 0) })
+    if (isMobileViewport.value) mobileToolbarBlockId.value = null
     return
   }
   const previous = props.note.blocks[index - 1]
@@ -136,6 +144,7 @@ function changeIndent(block, index, direction) {
   emit('update-block', block.id, {
     indent: Math.min(currentIndent + 1, maximumIndent),
   })
+  if (isMobileViewport.value) mobileToolbarBlockId.value = null
 }
 
 function applySuggestion(block, option) {
@@ -214,6 +223,48 @@ function handleKeydown(block, index, event) {
     focusBlock(previous.id)
   }
 }
+
+function removeBlock(blockId) {
+  mobileToolbarBlockId.value = null
+  emit('remove-block', blockId)
+}
+
+function openReminder(block) {
+  mobileToolbarBlockId.value = null
+  emit('edit-reminder', block)
+}
+
+function toggleMobileToolbar(blockId) {
+  mobileToolbarBlockId.value = mobileToolbarBlockId.value === blockId ? null : blockId
+}
+
+function isMobileToolbarOpen(blockId) {
+  return mobileToolbarBlockId.value === blockId
+}
+
+function updateViewportMode() {
+  if (!viewportQuery) return
+  isMobileViewport.value = viewportQuery.matches
+  if (!viewportQuery.matches) mobileToolbarBlockId.value = null
+}
+
+function handlePointerDown(event) {
+  if (!mobileToolbarBlockId.value) return
+  if (event.target.closest('[data-mobile-toolbar]')) return
+  mobileToolbarBlockId.value = null
+}
+
+onMounted(() => {
+  viewportQuery = window.matchMedia('(max-width: 760px)')
+  updateViewportMode()
+  viewportQuery.addEventListener('change', updateViewportMode)
+  window.addEventListener('pointerdown', handlePointerDown)
+})
+
+onBeforeUnmount(() => {
+  viewportQuery?.removeEventListener('change', updateViewportMode)
+  window.removeEventListener('pointerdown', handlePointerDown)
+})
 
 </script>
 
@@ -327,7 +378,11 @@ function handleKeydown(block, index, event) {
           </button>
         </div>
 
-        <div v-if="focusedBlockId === block.id" class="block-toolbar" @mousedown.prevent>
+        <div
+          v-if="focusedBlockId === block.id && !isMobileViewport"
+          class="block-toolbar"
+          @mousedown.prevent
+        >
           <span class="toolbar-label">Tipo</span>
           <div class="type-options" role="group" aria-label="Tipo de entrada">
             <button
@@ -367,14 +422,94 @@ function handleKeydown(block, index, event) {
             <button
               v-if="block.type === 'task'"
               title="Añadir recordatorio"
-              @click="emit('edit-reminder', block)"
+              @click="openReminder(block)"
             >◷ <span>Fecha</span></button>
             <button
               v-if="block.type !== 'heading' || block.level !== 1"
               class="remove-block-button"
               title="Eliminar entrada"
-              @click="emit('remove-block', block.id)"
+              @click="removeBlock(block.id)"
             >× <span>Eliminar</span></button>
+          </div>
+        </div>
+
+        <div
+          v-if="focusedBlockId === block.id && isMobileViewport"
+          class="mobile-toolbar-anchor"
+          data-mobile-toolbar
+        >
+          <button
+            class="mobile-toolbar-trigger"
+            :aria-expanded="isMobileToolbarOpen(block.id)"
+            aria-label="Mostrar opciones del bloque"
+            @mousedown.prevent
+            @click="toggleMobileToolbar(block.id)"
+          >
+            <span>⋯</span>Opciones
+          </button>
+
+          <div
+            v-if="isMobileToolbarOpen(block.id)"
+            class="mobile-toolbar-panel"
+            @mousedown.prevent
+          >
+            <span class="toolbar-label">Tipo</span>
+            <div class="mobile-toolbar-group" role="group" aria-label="Tipo de entrada">
+              <button
+                v-for="type in blockTypes"
+                :key="type.value"
+                :class="{ active: block.type === type.value }"
+                :aria-pressed="block.type === type.value"
+                :title="`Convertir en ${type.label.toLocaleLowerCase()}`"
+                @click="changeType(block, type.value)"
+              >
+                <span>{{ type.icon }}</span>{{ type.label }}
+              </button>
+            </div>
+
+            <div
+              v-if="indentableTypes.has(block.type) || block.type === 'task'"
+              class="mobile-toolbar-group"
+            >
+              <button
+                v-if="indentableTypes.has(block.type)"
+                :disabled="!block.indent"
+                title="Reducir nivel (Shift + Tab)"
+                @click="changeIndent(block, index, -1)"
+              >← <span>Nivel</span></button>
+              <button
+                v-if="indentableTypes.has(block.type)"
+                title="Crear subitem (Tab)"
+                @click="changeIndent(block, index, 1)"
+              >→ <span>Subitem</span></button>
+              <button
+                v-if="block.type === 'task'"
+                class="priority-control"
+                :class="`priority-${block.priority || 'base'}`"
+                :title="`Prioridad ${priorityOptions[block.priority || 'base'].label}. Pulsar para cambiar`"
+                :aria-label="`Prioridad: ${priorityOptions[block.priority || 'base'].label}. Cambiar prioridad`"
+                @click="cyclePriority(block)"
+              >
+                {{ priorityOptions[block.priority || 'base'].icon }}
+                <span>{{ priorityOptions[block.priority || 'base'].label }}</span>
+              </button>
+              <button
+                v-if="block.type === 'task'"
+                title="Añadir recordatorio"
+                @click="openReminder(block)"
+              >◷ <span>Fecha</span></button>
+            </div>
+
+            <div
+              v-if="block.type !== 'heading' || block.level !== 1"
+              class="mobile-toolbar-group mobile-toolbar-group-danger"
+            >
+              <button
+                class="remove-block-button"
+                title="Eliminar entrada"
+                @click="removeBlock(block.id)"
+              >× <span>Eliminar</span></button>
+            </div>
           </div>
         </div>
       </div>

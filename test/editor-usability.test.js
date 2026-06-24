@@ -106,3 +106,22 @@ test('Tab y Shift Tab crean y reducen niveles de subitems', async () => {
   assert.match(styles, /--indent-level/)
   assert.match(styles, /\.nested-block:not\(\.section-child\)/)
 })
+
+test('en móvil las opciones avanzadas se ocultan tras un disparador compacto', async () => {
+  const [editor, styles] = await Promise.all([
+    readFile(new URL('../src/components/BlockEditor.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(editor, /const mobileToolbarBlockId = ref\(null\)/)
+  assert.match(editor, /const isMobileViewport = ref\(false\)/)
+  assert.match(editor, /focusedBlockId === block\.id && !isMobileViewport/)
+  assert.match(editor, /focusedBlockId === block\.id && isMobileViewport/)
+  assert.match(editor, /class="mobile-toolbar-trigger"/)
+  assert.match(editor, />\s*<span>⋯<\/span>Opciones\s*</)
+  assert.match(editor, /class="mobile-toolbar-panel"/)
+  assert.match(editor, /class="mobile-toolbar-group mobile-toolbar-group-danger"/)
+  assert.match(styles, /\.mobile-toolbar-anchor\s*\{/)
+  assert.match(styles, /\.mobile-toolbar-panel\s*\{/)
+  assert.match(styles, /@media \(max-width: 760px\) \{[\s\S]*\.mobile-toolbar-anchor \{ display: flex; \}/)
+})
