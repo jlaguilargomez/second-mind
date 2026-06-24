@@ -21,6 +21,7 @@ import {
   serializeJournalShare,
   serializeNote,
   sortContextBlocksByDate,
+  tagTemplate,
   titleFromMarkdown,
 } from '../src/lib/markdown.js'
 
@@ -135,6 +136,37 @@ contextType: project
 
   assert.equal(note.contextType, 'project')
   assert.match(serializeNote(note), /contextType: project/)
+})
+
+test('las etiquetas pueden guardar una descripción breve en frontmatter', () => {
+  const note = normalizeNote({
+    kind: 'tag',
+    filename: 'lanzamiento.md',
+    title: 'lanzamiento',
+    description: 'Cierre visual y coordinación final',
+    blocks: [],
+  })
+  const template = tagTemplate('lanzamiento', {
+    description: 'Entrega pequeña pero crítica',
+  })
+
+  assert.equal(note.kind, 'tag')
+  assert.equal(note.description, 'Cierre visual y coordinación final')
+  assert.match(serializeNote(note), /type: tag/)
+  assert.match(serializeNote(note), /description: Cierre visual y coordinación final/)
+  assert.match(template, /description: Entrega pequeña pero crítica/)
+})
+
+test('la descripción de etiqueta se limita a cincuenta caracteres', () => {
+  const note = normalizeNote({
+    kind: 'tag',
+    filename: 'ops.md',
+    title: 'ops',
+    description: '123456789012345678901234567890123456789012345678901234',
+    blocks: [],
+  })
+
+  assert.equal(note.description.length, 50)
 })
 
 test('limpia el énfasis decorativo de encabezados exportados por Reflect', () => {

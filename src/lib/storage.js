@@ -55,7 +55,7 @@ async function readMarkdownDirectory(directory, kind) {
 
 export async function readWorkspace(root) {
   const notes = []
-  for (const kind of ['journals', 'contexts']) {
+  for (const kind of ['journals', 'contexts', 'tags']) {
     try {
       const directory = await root.getDirectoryHandle(kind)
       notes.push(...(await readMarkdownDirectory(directory, kind)))
@@ -99,9 +99,12 @@ export async function readMarkdownTree(root, prefix = '') {
 }
 
 export async function writeNote(root, note) {
-  const directory = await root.getDirectoryHandle(note.kind === 'context' ? 'contexts' : 'journals', {
-    create: true,
-  })
+  const directoryName = note.kind === 'context'
+    ? 'contexts'
+    : note.kind === 'tag'
+      ? 'tags'
+      : 'journals'
+  const directory = await root.getDirectoryHandle(directoryName, { create: true })
   const handle = await directory.getFileHandle(note.filename, { create: true })
   const writable = await handle.createWritable()
   await writable.write(note.markdown)
@@ -109,6 +112,11 @@ export async function writeNote(root, note) {
 }
 
 export async function removeNote(root, note) {
-  const directory = await root.getDirectoryHandle(note.kind === 'context' ? 'contexts' : 'journals')
+  const directoryName = note.kind === 'context'
+    ? 'contexts'
+    : note.kind === 'tag'
+      ? 'tags'
+      : 'journals'
+  const directory = await root.getDirectoryHandle(directoryName)
   await directory.removeEntry(note.filename)
 }

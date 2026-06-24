@@ -114,6 +114,11 @@ test('las etiquetas se presentan como proyectos sin cambiar el Markdown canónic
   assert.match(app, /block\.tagIndent/)
   assert.match(app, /PROYECTOS POR ETIQUETA/)
   assert.match(app, /Etiquetas \/ Proyectos/)
+  assert.match(app, /maxlength="50"/)
+  assert.match(app, /Nota breve/)
+  assert.match(app, /saveTagDescription/)
+  assert.match(composable, /function updateTag\(name, patch\)/)
+  assert.match(composable, /description: note\.description \|\| ''/)
   assert.match(app, /Tareas abiertas/)
   assert.match(app, /Tareas completadas/)
   assert.match(app, /Bitácora/)
@@ -125,6 +130,7 @@ test('las etiquetas se presentan como proyectos sin cambiar el Markdown canónic
   assert.match(app, /supportContexts/)
   assert.match(styles, /\.project-board/)
   assert.match(styles, /\.project-progress/)
+  assert.match(styles, /\.tag-note-control/)
 })
 
 test('el formulario de nuevo contexto usa área como tipo predeterminado', async () => {

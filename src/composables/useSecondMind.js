@@ -83,6 +83,7 @@ function normalizeImportedNote(note) {
 
 function importIdentity(note) {
   if (note.kind === 'journal') return `journal:${note.date || note.filename}`
+  if (note.kind === 'tag') return `tag:${note.title.toLocaleLowerCase()}`
   return `context:${note.title.toLocaleLowerCase()}`
 }
 
@@ -114,6 +115,7 @@ export function useSecondMind() {
       .sort((a, b) => (b.date || '').localeCompare(a.date || '')),
   )
   const contextNotes = computed(() => notes.value.filter((note) => note.kind === 'context'))
+  const tagNotes = computed(() => notes.value.filter((note) => note.kind === 'tag'))
   const allBlocks = computed(() =>
     notes.value.flatMap((note) =>
       note.blocks
@@ -179,9 +181,29 @@ export function useSecondMind() {
     for (const block of allBlocks.value) {
       for (const tag of block.tags) counts.set(tag, (counts.get(tag) || 0) + 1)
     }
-    return [...counts.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
+    const index = new Map(
+      [...counts.entries()].map(([name, count]) => [
+        name.toLocaleLowerCase(),
+        { name, count, description: '', noteId: null },
+      ]),
+    )
+    for (const note of tagNotes.value) {
+      const key = note.title.toLocaleLowerCase()
+      const existing = index.get(key) || {
+        name: note.title,
+        count: 0,
+        description: '',
+        noteId: null,
+      }
+      index.set(key, {
+        ...existing,
+        name: note.title,
+        description: note.description || '',
+        noteId: note.id,
+      })
+    }
+    return [...index.values()]
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
   })
 
   async function initialize() {
@@ -353,6 +375,13 @@ export function useSecondMind() {
       return
     }
 
+    const firstTag = tagNotes.value[0]
+    if (firstTag) {
+      activeNoteId.value = firstTag.id
+      currentView.value = 'tags'
+      return
+    }
+
     activeNoteId.value = null
     selectedContext.value = null
     currentView.value = 'journal'
@@ -365,6 +394,37 @@ export function useSecondMind() {
     const updated = normalizeNote({ ...note, ...patch, markdown: undefined })
     replaceNote(updated)
     persistNote(updated)
+  }
+
+  async function ensureTagNote(name) {
+    const key = name.toLocaleLowerCase()
+    let note = tagNotes.value.find((item) => item.title.toLocaleLowerCase() === key)
+    if (!note) {
+      note = normalizeNote({
+        id: createId(),
+        kind: 'tag',
+        filename: `${contextSlug(name) || 'etiqueta'}.md`,
+        title: name,
+        description: '',
+        blocks: [{ ...createBlock('heading', name), level: 1 }],
+      })
+      replaceNote(note)
+      await persistNote(note, { immediate: true })
+    }
+    return note
+  }
+
+  async function updateTag(name, patch) {
+    const note = await ensureTagNote(name)
+    const updated = normalizeNote({
+      ...note,
+      ...patch,
+      description: (patch.description ?? note.description ?? '').slice(0, 50),
+      markdown: undefined,
+    })
+    replaceNote(updated)
+    persistNote(updated)
+    return updated
   }
 
   async function removeReferences(name, removeReference, excludedNoteId = null) {
@@ -418,7 +478,22 @@ export function useSecondMind() {
   }
 
   async function deleteTag(name) {
+    const key = name.trim().toLocaleLowerCase()
+    const tagNote = tagNotes.value.find((note) => note.title.toLocaleLowerCase() === key)
     await removeReferences(name, removeTagReference)
+    if (tagNote) {
+      clearTimeout(saveTimers.get(tagNote.id))
+      saveTimers.delete(tagNote.id)
+      await repository.deleteNote(tagNote.id)
+      if (directoryHandle.value) {
+        try {
+          await removeNote(directoryHandle.value, tagNote)
+        } catch (error) {
+          if (error.name !== 'NotFoundError') throw error
+        }
+      }
+      notes.value = notes.value.filter((note) => note.id !== tagNote.id)
+    }
   }
 
   function updateBlock(noteId, blockId, patch) {
@@ -534,7 +609,7 @@ export function useSecondMind() {
     const date = sourcePath.match(/\d{4}-\d{2}-\d{2}/)?.[0] || null
     return normalizeNote({
       id: undefined,
-      kind: date ? 'journal' : 'context',
+      kind: date ? 'journal' : undefined,
       filename,
       date,
       markdown,
@@ -627,6 +702,10 @@ export function useSecondMind() {
     return contextIndex.value.find((context) => context.name.toLocaleLowerCase() === name.toLocaleLowerCase())
   }
 
+  function getTag(name) {
+    return tags.value.find((tag) => tag.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+  }
+
   function contextBlocks(name) {
     return sortContextBlocksByDate(projectContextBlocks(allBlocks.value, name))
   }
@@ -667,11 +746,13 @@ export function useSecondMind() {
     reminders,
     contextIndex,
     tags,
+    tagNotes,
     initialize,
     openDate,
     setView,
     openContext,
     updateContext,
+    updateTag,
     deleteContext,
     deleteTag,
     updateBlock,
@@ -686,6 +767,7 @@ export function useSecondMind() {
     checkDueNotifications,
     openBlock,
     getContext,
+    getTag,
     contextBlocks,
     search,
   }

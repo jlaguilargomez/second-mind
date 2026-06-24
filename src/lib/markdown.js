@@ -405,7 +405,7 @@ export function serializeContextShare(name, blocks = []) {
 export function serializeNote(note) {
   const attributes = {
     id: note.id,
-    type: note.kind === 'journal' ? 'journal' : 'context',
+    type: note.kind,
     ...(note.date ? { date: note.date } : {}),
     ...(note.kind === 'context'
       ? {
@@ -413,6 +413,12 @@ export function serializeNote(note) {
           contextType: note.contextType || DEFAULT_CONTEXT_TYPE,
           emoji: note.emoji || '◈',
           color: note.color || 'sage',
+        }
+      : {}),
+    ...(note.kind === 'tag'
+      ? {
+          name: note.title,
+          description: note.description || '',
         }
       : {}),
     version: note.version || 1,
@@ -429,15 +435,18 @@ export function normalizeNote(note) {
     : parseMarkdown(note.markdown || '', { fallbackTitle })
   const dateMatch = note.date || note.filename?.match(/\d{4}-\d{2}-\d{2}/)?.[0]
   const now = new Date().toISOString()
+  const inferredKind = note.kind || parsed.attributes.type || (dateMatch ? 'journal' : 'context')
+  const normalizedTitle = note.title || parsed.attributes.name || parsed.title || fallbackTitle
   const normalized = {
     id: note.id || parsed.attributes.id || createId(),
-    kind: note.kind || (parsed.attributes.type === 'context' ? 'context' : 'journal'),
+    kind: inferredKind,
     filename: note.filename,
     date: dateMatch || parsed.attributes.date || null,
-    title: parsed.title,
+    title: normalizedTitle,
     emoji: note.emoji || parsed.attributes.emoji || '◈',
     color: note.color || parsed.attributes.color || 'sage',
     contextType: note.contextType || parsed.attributes.contextType || DEFAULT_CONTEXT_TYPE,
+    description: (note.description || parsed.attributes.description || '').slice(0, 50),
     blocks: applySectionContexts(
       (note.blocks || parsed.blocks).map((block) => {
         const properties = { ...(block.properties || {}) }
@@ -495,6 +504,18 @@ export function contextTemplate(name, options = {}) {
     emoji: options.emoji || '◈',
     color: options.color || 'sage',
     contextType: options.contextType || DEFAULT_CONTEXT_TYPE,
+    blocks: [{ ...createBlock('heading', name), level: 1 }],
+  })
+  return note.markdown
+}
+
+export function tagTemplate(name, options = {}) {
+  const note = normalizeNote({
+    id: options.id || createId(),
+    kind: 'tag',
+    filename: `${contextSlug(name) || 'etiqueta'}.md`,
+    title: name,
+    description: options.description || '',
     blocks: [{ ...createBlock('heading', name), level: 1 }],
   })
   return note.markdown

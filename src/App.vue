@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import JSZip from 'jszip'
 import { registerSW } from 'virtual:pwa-register'
 import BlockEditor from './components/BlockEditor.vue'
@@ -57,6 +57,7 @@ const importError = ref('')
 const copyState = ref('idle')
 const isOnline = ref(navigator.onLine)
 const updateAvailable = ref(false)
+const tagDescriptionDraft = ref('')
 const updateSW = registerSW({
   onNeedRefresh() {
     updateAvailable.value = true
@@ -235,6 +236,14 @@ const journalEntryCount = computed(() =>
 )
 const journalContextCount = computed(() => activeNote.value?.contexts.length || 0)
 
+watch(
+  activeTagProject,
+  (tag) => {
+    tagDescriptionDraft.value = tag?.description || ''
+  },
+  { immediate: true },
+)
+
 function pluralize(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`
 }
@@ -404,6 +413,13 @@ async function deleteTag(name) {
   if (selectedTag.value?.toLocaleLowerCase() === name.toLocaleLowerCase()) selectedTag.value = null
 }
 
+async function saveTagDescription() {
+  if (!activeTagProject.value) return
+  const description = tagDescriptionDraft.value.trim().slice(0, 50)
+  tagDescriptionDraft.value = description
+  await mind.updateTag(activeTagProject.value.name, { description })
+}
+
 async function chooseWorkspace() {
   connectionError.value = ''
   try {
@@ -447,7 +463,7 @@ async function importReflectDirectory() {
 async function exportWorkspace() {
   const zip = new JSZip()
   for (const note of notes.value) {
-    const directory = note.kind === 'context' ? 'contexts' : 'journals'
+    const directory = note.kind === 'context' ? 'contexts' : note.kind === 'tag' ? 'tags' : 'journals'
     zip.file(`${directory}/${note.filename}`, serializeNote(note))
   }
   zip.file(
@@ -932,6 +948,7 @@ onBeforeUnmount(() => {
                     <strong>#{{ tag.name }}</strong>
                   </span>
                 </button>
+                <p v-if="tag.description" class="project-description">{{ tag.description }}</p>
                 <div class="project-progress" :style="{ '--project-progress': `${tag.progressPercent}%` }">
                   <div>
                     <span>{{ tag.completedTasks }}/{{ tag.totalTasks }}</span>
@@ -976,11 +993,24 @@ onBeforeUnmount(() => {
                 <div>
                   <p class="eyebrow">PROYECTO</p>
                   <h1>#{{ activeTagProject.name }}</h1>
+                  <p v-if="activeTagProject.description" class="tag-summary">{{ activeTagProject.description }}</p>
                   <p>
                     {{ activeTagProject.completedTasks }}/{{ activeTagProject.totalTasks }} tareas completadas ·
                     {{ activeTagOpenTasks.length }} abiertas ·
                     {{ activeTagProject.count }} menciones
                   </p>
+                  <label class="tag-note-control">
+                    Nota breve
+                    <input
+                      v-model="tagDescriptionDraft"
+                      type="text"
+                      maxlength="50"
+                      placeholder="Añade una pequeña connotación"
+                      @blur="saveTagDescription"
+                      @keydown.enter.prevent="$event.target.blur()"
+                    />
+                    <small>{{ tagDescriptionDraft.length }}/50</small>
+                  </label>
                   <div class="project-progress context-progress" :style="{ '--project-progress': `${activeTagProject.progressPercent}%` }">
                     <div>
                       <span>{{ activeTagProject.progressPercent }}%</span>
