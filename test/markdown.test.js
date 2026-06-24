@@ -14,6 +14,7 @@ import {
   normalizeNote,
   parseMarkdown,
   projectContextBlocks,
+  projectTagBlocks,
   reminderDate,
   reminderState,
   serializeContextShare,
@@ -245,6 +246,46 @@ test('la proyección de contexto conserva juntos padres e hijos', () => {
   assert.equal(ancestorProjection.length, 2)
   assert.deepEqual(ancestorProjection.map((block) => block.contextMatch), [false, true])
   assert.deepEqual(ancestorProjection.map((block) => block.contextIndent), [0, 1])
+})
+
+test('los bloques anidados heredan etiquetas del padre sin duplicarlas en Markdown', () => {
+  const note = normalizeNote({
+    kind: 'journal',
+    blocks: [
+      createBlock('task', 'Tarea del proyecto #proyecto1'),
+      { ...createBlock('task', 'Subtarea heredada'), indent: 1 },
+      { ...createBlock('log', 'Log heredado #diario'), indent: 1 },
+      createBlock('log', 'Log independiente'),
+    ],
+  })
+  const [, childTask, childLog, independentLog] = note.blocks
+
+  assert.deepEqual(childTask.tags, ['proyecto1'])
+  assert.deepEqual(childTask.inheritedTags, ['proyecto1'])
+  assert.deepEqual(childLog.tags, ['diario', 'proyecto1'])
+  assert.deepEqual(childLog.inheritedTags, ['proyecto1'])
+  assert.deepEqual(independentLog.tags, [])
+  assert.doesNotMatch(note.markdown, /Subtarea heredada #proyecto1/)
+  assert.doesNotMatch(note.markdown, /Log independiente #proyecto1/)
+})
+
+test('la proyección de etiqueta conserva juntos padres e hijos', () => {
+  const inheritedProject = parseMarkdown(`- [ ] Tarea del proyecto #proyecto1
+  - [ ] Subtarea heredada
+  - Log heredado`).blocks
+  const inheritedProjection = projectTagBlocks(inheritedProject, 'proyecto1')
+
+  assert.equal(inheritedProjection.length, 3)
+  assert.deepEqual(inheritedProjection.map((block) => block.tagMatch), [true, true, true])
+  assert.deepEqual(inheritedProjection.map((block) => block.tagIndent), [0, 1, 1])
+
+  const childProject = parseMarkdown(`- Log general
+  - [ ] Subtarea específica #proyecto2`).blocks
+  const ancestorProjection = projectTagBlocks(childProject, 'proyecto2')
+
+  assert.equal(ancestorProjection.length, 2)
+  assert.deepEqual(ancestorProjection.map((block) => block.tagMatch), [false, true])
+  assert.deepEqual(ancestorProjection.map((block) => block.tagIndent), [0, 1])
 })
 
 test('guarda prioridades de tarea de forma portable y omite la prioridad base', () => {

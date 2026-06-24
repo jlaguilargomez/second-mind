@@ -186,7 +186,9 @@ export function applySectionContexts(blocks = []) {
       return {
         ...block,
         contexts: headingContexts,
+        tags: extractTags(block.content),
         inheritedContexts: [],
+        inheritedTags: [],
         parentId: null,
         ancestorIds: [],
       }
@@ -203,13 +205,17 @@ export function applySectionContexts(blocks = []) {
       ),
     ]
     const explicitContexts = extractContexts(block.content)
+    const explicitTags = extractTags(block.content)
     const inheritedContexts = [
       ...new Set([...sectionContexts, ...(parent?.contexts || [])]),
     ]
+    const inheritedTags = [...new Set(parent?.tags || [])]
     const enrichedBlock = {
       ...block,
       contexts: [...new Set([...explicitContexts, ...inheritedContexts])],
+      tags: [...new Set([...explicitTags, ...inheritedTags])],
       inheritedContexts,
+      inheritedTags,
       parentId: parent?.id || null,
       ancestorIds: parent ? [...(parent.ancestorIds || []), parent.id].filter(Boolean) : [],
     }
@@ -235,6 +241,26 @@ export function projectContextBlocks(blocks = [], name = '') {
       ...block,
       contextIndent: (block.ancestorIds || []).filter((id) => includedIds.has(id)).length,
       contextMatch: matches.some((match) => match.id === block.id),
+    }))
+}
+
+export function projectTagBlocks(blocks = [], name = '') {
+  const key = name.toLocaleLowerCase()
+  const matches = blocks.filter(
+    (block) =>
+      block.type !== 'heading' &&
+      (block.tags || extractTags(block.content)).some(
+        (tag) => tag.toLocaleLowerCase() === key,
+      ),
+  )
+  const includedIds = new Set(matches.flatMap((block) => [block.id, ...(block.ancestorIds || [])]))
+
+  return blocks
+    .filter((block) => block.type !== 'heading' && includedIds.has(block.id))
+    .map((block) => ({
+      ...block,
+      tagIndent: (block.ancestorIds || []).filter((id) => includedIds.has(id)).length,
+      tagMatch: matches.some((match) => match.id === block.id),
     }))
 }
 

@@ -14,6 +14,7 @@ import {
   serializeContextShare,
   serializeJournalShare,
   serializeNote,
+  projectTagBlocks,
   sortContextBlocksByDate,
 } from './lib/markdown'
 import { isTrackingTask } from './lib/taskClassification'
@@ -160,8 +161,8 @@ const contextTags = computed(() => {
 const tagProjects = computed(() =>
   tags.value
     .map((tag) => {
-      const projectBlocks = allBlocks.value.filter((block) => block.tags.includes(tag.name))
-      const projectTasks = projectBlocks.filter((block) => block.type === 'task')
+      const projectBlocks = projectTagBlocks(allBlocks.value, tag.name)
+      const projectTasks = projectBlocks.filter((block) => block.type === 'task' && block.tagMatch)
       const completedTasks = projectTasks.filter((task) => task.checked).length
       const openTasks = projectTasks.filter((task) => !task.checked)
       const upcomingTasks = openTasks
@@ -193,10 +194,10 @@ const activeTagProject = computed(() =>
     : null,
 )
 const activeTagOpenTasks = computed(() =>
-  activeTagProject.value?.blocks.filter((block) => block.type === 'task' && !block.checked) || [],
+  activeTagProject.value?.blocks.filter((block) => block.type === 'task' && block.tagMatch && !block.checked) || [],
 )
 const activeTagCompletedTasks = computed(() =>
-  activeTagProject.value?.blocks.filter((block) => block.type === 'task' && block.checked) || [],
+  activeTagProject.value?.blocks.filter((block) => block.type === 'task' && block.tagMatch && block.checked) || [],
 )
 const activeTagRecentBlocks = computed(() =>
   activeTagProject.value
@@ -1042,9 +1043,11 @@ onBeforeUnmount(() => {
                   <article
                     v-for="block in activeTagRecentBlocks"
                     :key="block.id"
+                    :class="{ 'activity-child': block.tagIndent > 0 }"
+                    :style="{ '--context-indent': Math.min(block.tagIndent || 0, 6) }"
                     @click="openTask(block)"
                   >
-                    <time>{{ block.noteDate || block.noteTitle }}</time>
+                    <time v-if="!block.tagIndent">{{ block.noteDate || block.noteTitle }}</time>
                     <p><RichText :text="block.content" @context="openContext" @tag="openTag" /></p>
                   </article>
                 </div>
