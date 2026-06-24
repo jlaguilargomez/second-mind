@@ -76,10 +76,24 @@ test('al conectar una carpeta, solo se exporta el estado actual si la carpeta es
   )
 
   assert.match(composable, /const diskNotes = await readWorkspace\(handle\)/)
-  assert.match(composable, /if \(diskNotes\.length\) \{\s*await applyWorkspaceNotes\(diskNotes\)/)
-  assert.match(composable, /else \{\s*const localNotes = notes\.value\.map\(\(note\) => normalizeNote\(note\)\)/)
-  assert.match(composable, /for \(const note of localNotes\) await writeNote\(handle, note\)/)
-  assert.match(composable, /await repository\.replaceAllNotes\(localNotes\)/)
+  assert.match(composable, /if \(diskNotes\.length && !hasPendingLocalImport\) \{\s*await applyWorkspaceNotes\(diskNotes\)/)
+  assert.match(composable, /const notesToWrite = hasPendingLocalImport/)
+  assert.match(composable, /for \(const note of notesToWrite\) await writeNote\(handle, note\)/)
+  assert.match(composable, /await repository\.replaceAllNotes\(notesToWrite\)/)
+})
+
+test('al conectar carpeta después de importar Reflect, vuelca la importación local a disco', async () => {
+  const composable = await readFile(
+    new URL('../src/composables/useSecondMind.js', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(composable, /let hasPendingLocalImport = false/)
+  assert.match(composable, /hasPendingLocalImport = true/)
+  assert.match(composable, /mergeImportedNotesWithDisk\(diskNotes\)/)
+  assert.match(composable, /function mergeImportedNotesWithDisk\(diskNotes\)/)
+  assert.match(composable, /merged\.set\(importIdentity\(note\), note\)/)
+  assert.match(composable, /hasPendingLocalImport = false/)
 })
 
 test('la interfaz permite recargar manualmente desde carpeta y evita llamar local al estado conectado', async () => {

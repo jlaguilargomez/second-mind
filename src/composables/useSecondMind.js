@@ -100,6 +100,7 @@ export function useSecondMind() {
   const conflicts = ref([])
   const notifiedReminders = new Set()
   const saveTimers = new Map()
+  let hasPendingLocalImport = false
 
   function settledSyncState() {
     if (directoryHandle.value) return 'Guardado en carpeta'
@@ -522,6 +523,8 @@ export function useSecondMind() {
     await repository.saveNotes(importedNotes)
     if (directoryHandle.value) {
       for (const note of importedNotes) await writeNote(directoryHandle.value, note)
+    } else {
+      hasPendingLocalImport = true
     }
     await activateFirstAvailableNote({ createJournal: false })
   }
@@ -545,16 +548,31 @@ export function useSecondMind() {
     directoryHandle.value = handle
     workspaceName.value = handle.name
     const diskNotes = await readWorkspace(handle)
-    if (diskNotes.length) {
+    if (diskNotes.length && !hasPendingLocalImport) {
       await applyWorkspaceNotes(diskNotes)
     } else {
-      const localNotes = notes.value.map((note) => normalizeNote(note))
-      notes.value = localNotes
-      for (const note of localNotes) await writeNote(handle, note)
-      await repository.replaceAllNotes(localNotes)
+      const notesToWrite = hasPendingLocalImport
+        ? mergeImportedNotesWithDisk(diskNotes)
+        : notes.value.map((note) => normalizeNote(note))
+      notes.value = notesToWrite
+      for (const note of notesToWrite) await writeNote(handle, note)
+      await repository.replaceAllNotes(notesToWrite)
     }
+    hasPendingLocalImport = false
     await activateFirstAvailableNote({ createJournal: false })
     syncState.value = settledSyncState()
+  }
+
+  function mergeImportedNotesWithDisk(diskNotes) {
+    const merged = new Map()
+    for (const diskNote of diskNotes) {
+      const note = normalizeImportedNote(diskNote)
+      merged.set(importIdentity(note), note)
+    }
+    for (const note of notes.value.map((item) => normalizeNote(item))) {
+      merged.set(importIdentity(note), note)
+    }
+    return [...merged.values()]
   }
 
   async function restoreWorkspace() {
