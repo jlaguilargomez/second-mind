@@ -8,6 +8,7 @@ import ReminderDialog from './components/ReminderDialog.vue'
 import RichText from './components/RichText.vue'
 import {
   formatReminderDate,
+  DEFAULT_CONTEXT_TYPE,
   isoDate,
   reminderDate,
   serializeContextShare,
@@ -41,7 +42,7 @@ const showSearch = ref(false)
 const showContextDialog = ref(false)
 const showMobilePanel = ref(false)
 const newContextName = ref('')
-const newContextType = ref('project')
+const newContextType = ref(DEFAULT_CONTEXT_TYPE)
 const selectedTag = ref(null)
 const taskFilter = ref('open')
 const contextFilter = ref('all')
@@ -364,7 +365,7 @@ async function createContext() {
   if (!newContextName.value.trim()) return
   await mind.openContext(newContextName.value.trim(), { contextType: newContextType.value })
   newContextName.value = ''
-  newContextType.value = 'project'
+  newContextType.value = DEFAULT_CONTEXT_TYPE
   showContextDialog.value = false
 }
 

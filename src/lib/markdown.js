@@ -1,5 +1,6 @@
 const PROPERTY_PATTERN = /^\s{2,}([\w-]+)::\s*(.*)$/
 const FRONTMATTER_PATTERN = /^---\n([\s\S]*?)\n---\n?/
+export const DEFAULT_CONTEXT_TYPE = 'area'
 
 export function createId() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
@@ -410,7 +411,7 @@ export function normalizeNote(note) {
     title: parsed.title,
     emoji: note.emoji || parsed.attributes.emoji || '◈',
     color: note.color || parsed.attributes.color || 'sage',
-    contextType: note.contextType || parsed.attributes.contextType || 'project',
+    contextType: note.contextType || parsed.attributes.contextType || DEFAULT_CONTEXT_TYPE,
     blocks: applySectionContexts(
       (note.blocks || parsed.blocks).map((block) => {
         const properties = { ...(block.properties || {}) }
@@ -467,7 +468,7 @@ export function contextTemplate(name, options = {}) {
     title: name,
     emoji: options.emoji || '◈',
     color: options.color || 'sage',
-    contextType: options.contextType || 'project',
+    contextType: options.contextType || DEFAULT_CONTEXT_TYPE,
     blocks: [{ ...createBlock('heading', name), level: 1 }],
   })
   return note.markdown

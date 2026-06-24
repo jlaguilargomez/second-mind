@@ -4,6 +4,7 @@ import {
   contextSlug,
   createBlock,
   createId,
+  DEFAULT_CONTEXT_TYPE,
   extractContexts,
   extractTags,
   headingEmoji,
@@ -288,7 +289,7 @@ export function useSecondMind() {
         kind: 'context',
         filename: `${contextSlug(name) || 'contexto'}.md`,
         title: name,
-        contextType: options.contextType || 'project',
+        contextType: options.contextType || DEFAULT_CONTEXT_TYPE,
         emoji: indexedContext?.emoji || contextEmojis[index % contextEmojis.length],
         color: contextPalette[index % contextPalette.length],
         blocks: [

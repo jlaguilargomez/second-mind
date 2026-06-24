@@ -4,7 +4,9 @@ import {
   applySectionContexts,
   cleanHeadingContent,
   contextSlug,
+  contextTemplate,
   createBlock,
+  DEFAULT_CONTEXT_TYPE,
   dailyTemplate,
   extractContexts,
   extractTags,
@@ -101,6 +103,36 @@ test('conserva el tipo de contexto en Markdown', () => {
 
   assert.equal(note.contextType, 'person')
   assert.match(serializeNote(note), /contextType: person/)
+})
+
+test('los contextos sin tipo explícito se crean como área', () => {
+  const note = normalizeNote({
+    kind: 'context',
+    filename: 'operaciones.md',
+    title: 'operaciones',
+    blocks: [],
+  })
+  const template = contextTemplate('operaciones')
+
+  assert.equal(DEFAULT_CONTEXT_TYPE, 'area')
+  assert.equal(note.contextType, 'area')
+  assert.match(serializeNote(note), /contextType: area/)
+  assert.match(template, /contextType: area/)
+})
+
+test('los contextos importados conservan misiones principales explícitas', () => {
+  const note = normalizeNote({
+    filename: 'motor.md',
+    markdown: `---
+type: context
+contextType: project
+---
+
+# motor`,
+  })
+
+  assert.equal(note.contextType, 'project')
+  assert.match(serializeNote(note), /contextType: project/)
 })
 
 test('limpia el énfasis decorativo de encabezados exportados por Reflect', () => {

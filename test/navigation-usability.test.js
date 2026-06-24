@@ -119,6 +119,14 @@ test('los proyectos se presentan como misiones principales sin cambiar su tipo c
   assert.match(styles, /\.mission-progress/)
 })
 
+test('el formulario de nuevo contexto usa área como tipo predeterminado', async () => {
+  const app = await readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
+
+  assert.match(app, /const newContextType = ref\(DEFAULT_CONTEXT_TYPE\)/)
+  assert.match(app, /newContextType\.value = DEFAULT_CONTEXT_TYPE/)
+  assert.doesNotMatch(app, /const newContextType = ref\('project'\)/)
+})
+
 test('contextos y etiquetas desplazan su contenido sin invadir el pie lateral', async () => {
   const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
 
