@@ -375,6 +375,62 @@ kbd {
 .agenda-item time { color: #74736c; font-family: var(--font-mono); font-size: 10px; }
 .agenda-item > button { border: 0; background: transparent; text-align: left; font-family: var(--font-editor); font-size: 17px; }
 
+.mission-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.mission-card {
+  display: grid; gap: 14px; align-content: start;
+  border: 1px solid rgba(90,86,74,.13); border-radius: 12px; padding: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.32);
+}
+.mission-card-main {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  border: 0; border-radius: 9px; padding: 0; background: transparent; text-align: left;
+}
+.mission-card-main .context-dot {
+  width: 38px; height: 38px; margin-right: 0; border-radius: 10px; font-size: 18px;
+}
+.mission-card-main span { min-width: 0; }
+.mission-card-main small, .mission-preview > strong {
+  display: block; color: #6f6d66; font-size: 9px; font-weight: 760;
+  letter-spacing: .9px; text-transform: uppercase;
+}
+.mission-card-main strong {
+  display: block; overflow: hidden; margin-top: 2px; color: var(--ink);
+  font-family: var(--font-editor); font-size: 23px; font-weight: 680; line-height: 1.12;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.mission-progress { display: grid; gap: 8px; }
+.mission-progress > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mission-progress span { font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+.mission-progress small { color: #6f6d66; font-size: 10px; }
+.mission-progress i {
+  position: relative; height: 8px; overflow: hidden; border-radius: 999px;
+  background: rgba(255,255,255,.55);
+}
+.mission-progress i::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: var(--mission-progress, 0%);
+  border-radius: inherit; background: var(--green);
+}
+.mission-stats { display: flex; flex-wrap: wrap; gap: 6px; }
+.mission-stats span {
+  border-radius: 999px; padding: 4px 7px; color: #555650;
+  background: rgba(255,255,255,.43); font-size: 10px;
+}
+.mission-preview { display: grid; gap: 6px; min-width: 0; }
+.mission-preview button {
+  display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; align-items: baseline;
+  border: 0; border-radius: 7px; padding: 7px; background: rgba(255,255,255,.34); text-align: left;
+}
+.mission-preview button:hover { background: rgba(255,255,255,.58); }
+.mission-preview time {
+  color: var(--amber); font-family: var(--font-mono); font-size: 9px; white-space: nowrap;
+}
+.mission-preview span {
+  overflow: hidden; color: #4f504b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap;
+}
+.mission-preview p { margin: 0; color: #6f6d66; font-size: 12px; }
+.mission-preview.muted { opacity: .78; }
+.context-progress { max-width: 340px; margin-top: 13px; }
+
 .context-hero { display: flex; align-items: center; gap: 19px; padding: 24px; margin-bottom: 38px; border-radius: 16px; }
 .context-hero > span { width: 62px; height: 62px; display: grid; place-items: center; border-radius: 16px; background: rgba(255,255,255,.45); font-size: 30px; }
 .context-type-control { display: flex; align-items: center; gap: 7px; margin-top: 12px; color: #74736c; font-size: 11px; }
@@ -587,17 +643,19 @@ kbd {
     background: rgba(35,35,31,.24);
   }
   .mobile-nav {
-    position: fixed; z-index: 15; inset: auto 0 0; height: 70px; display: grid; grid-template-columns: repeat(5, 1fr);
+    position: fixed; z-index: 15; inset: auto 0 0; height: 70px; display: grid; grid-template-columns: repeat(6, 1fr);
     border-top: 1px solid var(--line); background: rgba(250,248,242,.96); backdrop-filter: blur(12px);
   }
   .mobile-nav button {
-    display: grid; place-content: center; gap: 1px; min-width: 44px; border: 0;
-    background: transparent; color: #696a64; font-size: 10px;
+    display: grid; place-content: center; gap: 1px; min-width: 0; overflow: hidden; border: 0;
+    background: transparent; color: #696a64; font-size: 9px;
   }
-  .mobile-nav button span { font-size: 25px; line-height: 1.05; }
+  .mobile-nav button span { font-size: 24px; line-height: 1.05; }
   .mobile-nav button.active { color: var(--green); }
   .context-hero { padding: 17px; }
   .context-hero > span { width: 49px; height: 49px; font-size: 23px; }
+  .mission-board { grid-template-columns: 1fr; }
+  .mission-card-main strong { font-size: 21px; }
   .tracking-grid { grid-template-columns: 1fr; }
   .task-card { grid-template-columns: 24px minmax(0, 1fr); }
   .task-card .reminder-button {

@@ -70,8 +70,9 @@ const pageTitle = computed(() => {
     })
   }
   if (currentView.value === 'context') return `@${selectedContext.value}`
-  if (currentView.value === 'tasks') return 'Tareas'
+  if (currentView.value === 'tasks') return 'Misiones Secundarias'
   if (currentView.value === 'agenda') return 'Agenda'
+  if (currentView.value === 'missions') return 'Misiones Principales'
   if (currentView.value === 'tracking') return 'Seguimiento'
   return 'Second Mind'
 })
@@ -143,6 +144,24 @@ const activeContextBlocks = computed(() =>
 const contextTasks = computed(() =>
   activeContextBlocks.value.filter((block) => block.type === 'task' && !block.checked),
 )
+const contextAllTasks = computed(() =>
+  activeContextBlocks.value.filter((block) => block.type === 'task'),
+)
+const activeContextProgress = computed(() => {
+  const total = contextAllTasks.value.length
+  const completed = contextAllTasks.value.filter((task) => task.checked).length
+  return {
+    completed,
+    total,
+    percent: total ? Math.round((completed / total) * 100) : 0,
+  }
+})
+const activeContextUpcomingTasks = computed(() =>
+  contextTasks.value
+    .filter((task) => task.reminder)
+    .sort((a, b) => (a.reminder || '').localeCompare(b.reminder || ''))
+    .slice(0, 3),
+)
 const contextTags = computed(() => {
   const counts = new Map()
   for (const block of activeContextBlocks.value) {
@@ -150,13 +169,47 @@ const contextTags = computed(() => {
   }
   return [...counts.entries()].map(([name, count]) => ({ name, count }))
 })
-const projectContexts = computed(() =>
+const mainMissions = computed(() =>
+  contextIndex.value
+    .filter((context) => (context.contextType || 'project') === 'project')
+    .map((context) => {
+      const missionTasks = tasks.value.filter((task) =>
+        task.contexts.some(
+          (name) => name.toLocaleLowerCase() === context.name.toLocaleLowerCase(),
+        ),
+      )
+      const completedTasks = missionTasks.filter((task) => task.checked).length
+      const upcomingTasks = missionTasks
+        .filter((task) => !task.checked && task.reminder)
+        .sort((a, b) => (a.reminder || '').localeCompare(b.reminder || ''))
+        .slice(0, 3)
+      const recentBlocks = mind.contextBlocks(context.name)
+        .filter((block) => block.content?.trim())
+        .slice(0, 3)
+
+      return {
+        ...context,
+        totalTasks: missionTasks.length,
+        completedTasks,
+        progressPercent: missionTasks.length
+          ? Math.round((completedTasks / missionTasks.length) * 100)
+          : 0,
+        upcomingTasks,
+        recentBlocks,
+      }
+    })
+    .sort((a, b) => b.openTasks - a.openTasks || a.name.localeCompare(b.name)),
+)
+const supportContexts = computed(() =>
   contextIndex.value.filter((context) =>
-    ['project', 'team', 'area'].includes(context.contextType || 'project'),
+    ['team', 'area'].includes(context.contextType || 'project'),
   ),
 )
 const peopleContexts = computed(() =>
   contextIndex.value.filter((context) => context.contextType === 'person'),
+)
+const activeContextIsMainMission = computed(() =>
+  (activeContext.value?.contextType || 'project') === 'project',
 )
 const waitingTasks = computed(() =>
   tasks.value.filter((task) => !task.checked && isTrackingTask(task)),
@@ -439,12 +492,16 @@ onBeforeUnmount(() => {
           <span>✎</span> Diario
         </button>
         <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')">
-          <span>✓</span> Tareas
+          <span>✓</span> Secundarias
           <small>{{ tasks.filter((task) => !task.checked).length }}</small>
         </button>
         <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')">
           <span>◷</span> Agenda
           <small>{{ reminders.length }}</small>
+        </button>
+        <button :class="{ active: currentView === 'missions' }" @click="navigate('missions')">
+          <span>✦</span> Principales
+          <small>{{ mainMissions.length }}</small>
         </button>
         <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')">
           <span>◎</span> Seguimiento
@@ -582,9 +639,9 @@ onBeforeUnmount(() => {
 
           <template v-else-if="currentView === 'tasks'">
             <div class="page-heading">
-              <p class="eyebrow">TRABAJO PENDIENTE</p>
-              <h1>Tareas</h1>
-              <p>Todo lo accionable, sin perder el día ni el contexto donde nació.</p>
+              <p class="eyebrow">MISIONES SECUNDARIAS</p>
+              <h1>Misiones Secundarias</h1>
+              <p>Acciones concretas para avanzar la aventura sin perder el día ni el contexto donde nacieron.</p>
             </div>
             <div class="filter-bar">
               <div class="status-filters" aria-label="Estado de las tareas">
@@ -597,8 +654,8 @@ onBeforeUnmount(() => {
               </div>
               <div class="task-filter-selects">
                 <label>
-                  <span>Contexto</span>
-                  <select v-model="contextFilter" aria-label="Filtrar tareas por contexto">
+                  <span>Camino</span>
+                  <select v-model="contextFilter" aria-label="Filtrar misiones secundarias por contexto o misión principal">
                     <option value="all">Todos</option>
                     <option v-for="context in contextIndex" :key="context.name" :value="context.name">
                       @{{ context.name }}
@@ -675,7 +732,73 @@ onBeforeUnmount(() => {
                 </button>
               </article>
             </div>
-            <div v-else class="empty-state">No hay tareas para estos filtros. Un pequeño milagro.</div>
+            <div v-else class="empty-state">No hay misiones secundarias para estos filtros. Un pequeño milagro.</div>
+          </template>
+
+          <template v-else-if="currentView === 'missions'">
+            <div class="page-heading">
+              <p class="eyebrow">MISIONES PRINCIPALES</p>
+              <h1>Misiones Principales</h1>
+              <p>Caminos largos con secundarias, bitácora y próximos pasos en un solo mapa.</p>
+            </div>
+
+            <div v-if="mainMissions.length" class="mission-board">
+              <article
+                v-for="mission in mainMissions"
+                :key="mission.name"
+                class="mission-card"
+                :class="`context-${mission.color || 'sage'}`"
+              >
+                <button class="mission-card-main" @click="openContext(mission.name)">
+                  <b :class="`context-dot color-${mission.color || 'sage'}`">{{ mission.emoji || '✦' }}</b>
+                  <span>
+                    <small>Misión Principal</small>
+                    <strong>@{{ mission.name }}</strong>
+                  </span>
+                </button>
+                <div class="mission-progress" :style="{ '--mission-progress': `${mission.progressPercent}%` }">
+                  <div>
+                    <span>{{ mission.completedTasks }}/{{ mission.totalTasks }}</span>
+                    <small>secundarias completadas</small>
+                  </div>
+                  <i></i>
+                </div>
+                <div class="mission-stats">
+                  <span>{{ mission.openTasks }} abiertas</span>
+                  <span>{{ mission.count }} menciones</span>
+                  <span>{{ mission.progressPercent }}%</span>
+                </div>
+                <div v-if="mission.upcomingTasks.length" class="mission-preview">
+                  <strong>Próximas</strong>
+                  <button
+                    v-for="task in mission.upcomingTasks"
+                    :key="task.id"
+                    @click="openTask(task)"
+                  >
+                    <time>{{ formatReminderDate(task.reminder, { short: true, year: false }) }}</time>
+                    <span>{{ task.content }}</span>
+                  </button>
+                </div>
+                <div v-else class="mission-preview muted">
+                  <strong>Próximas</strong>
+                  <p>Sin fecha marcada. El camino espera una señal.</p>
+                </div>
+                <div v-if="mission.recentBlocks.length" class="mission-preview">
+                  <strong>Bitácora</strong>
+                  <button
+                    v-for="block in mission.recentBlocks"
+                    :key="block.id"
+                    @click="openTask(block)"
+                  >
+                    <time>{{ block.noteDate || block.noteTitle }}</time>
+                    <span>{{ block.content }}</span>
+                  </button>
+                </div>
+              </article>
+            </div>
+            <div v-else class="empty-state">
+              Crea un contexto de tipo Misión Principal para abrir el primer camino.
+            </div>
           </template>
 
           <template v-else-if="currentView === 'agenda'">
@@ -736,10 +859,10 @@ onBeforeUnmount(() => {
               </p>
             </section>
 
-            <section class="tracking-section">
-              <div class="section-title"><h2>Proyectos y áreas</h2><span>{{ projectContexts.length }}</span></div>
+            <section v-if="supportContexts.length" class="tracking-section">
+              <div class="section-title"><h2>Equipos y áreas</h2><span>{{ supportContexts.length }}</span></div>
               <div class="tracking-grid">
-                <button v-for="context in projectContexts" :key="context.name" @click="openContext(context.name)">
+                <button v-for="context in supportContexts" :key="context.name" @click="openContext(context.name)">
                   <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
                   <span><strong>@{{ context.name }}</strong><small>{{ context.openTasks }} tareas · {{ context.count }} menciones</small></span>
                 </button>
@@ -764,9 +887,24 @@ onBeforeUnmount(() => {
             <div class="context-hero" :class="`context-${activeContext.color || 'sage'}`">
               <span>{{ activeContext.emoji || '◈' }}</span>
               <div>
-                <p class="eyebrow">CONTEXTO</p>
+                <p class="eyebrow">{{ activeContextIsMainMission ? 'MISIÓN PRINCIPAL' : 'CONTEXTO' }}</p>
                 <h1>@{{ activeContext.name }}</h1>
-                <p>{{ activeContext.count }} menciones · {{ activeContext.openTasks }} tareas abiertas</p>
+                <p v-if="activeContextIsMainMission">
+                  {{ activeContextProgress.completed }}/{{ activeContextProgress.total }} secundarias completadas ·
+                  {{ activeContext.openTasks }} abiertas · {{ activeContext.count }} menciones
+                </p>
+                <p v-else>{{ activeContext.count }} menciones · {{ activeContext.openTasks }} tareas abiertas</p>
+                <div
+                  v-if="activeContextIsMainMission"
+                  class="mission-progress context-progress"
+                  :style="{ '--mission-progress': `${activeContextProgress.percent}%` }"
+                >
+                  <div>
+                    <span>{{ activeContextProgress.percent }}%</span>
+                    <small>avance del camino</small>
+                  </div>
+                  <i></i>
+                </div>
                 <label class="context-type-control">
                   Tipo
                   <select
@@ -783,7 +921,10 @@ onBeforeUnmount(() => {
             </div>
 
             <section v-if="contextTasks.length" class="context-section">
-              <div class="section-title"><h2>Tareas abiertas</h2><span>{{ contextTasks.length }}</span></div>
+              <div class="section-title">
+                <h2>{{ activeContextIsMainMission ? 'Misiones secundarias abiertas' : 'Tareas abiertas' }}</h2>
+                <span>{{ contextTasks.length }}</span>
+              </div>
               <article v-for="task in contextTasks" :key="task.id" class="task-card compact">
                 <button
                   class="task-toggle"
@@ -806,8 +947,25 @@ onBeforeUnmount(() => {
               </article>
             </section>
 
+            <section
+              v-if="activeContextIsMainMission && activeContextUpcomingTasks.length"
+              class="context-section"
+            >
+              <div class="section-title"><h2>Próximas señales</h2><span>{{ activeContextUpcomingTasks.length }}</span></div>
+              <article v-for="task in activeContextUpcomingTasks" :key="task.id" class="agenda-item">
+                <time>{{ formatReminderDate(task.reminder) }}</time>
+                <button @click="openTask(task)">
+                  <RichText :text="task.content" @context="openContext" @tag="openTag" />
+                </button>
+                <button aria-label="Reprogramar" @click="editReminder(task)">•••</button>
+              </article>
+            </section>
+
             <section class="context-section">
-              <div class="section-title"><h2>Actividad reciente</h2><span>{{ activeContextBlocks.length }}</span></div>
+              <div class="section-title">
+                <h2>{{ activeContextIsMainMission ? 'Bitácora del camino' : 'Actividad reciente' }}</h2>
+                <span>{{ activeContextBlocks.length }}</span>
+              </div>
               <div class="activity-timeline">
                 <article
                   v-for="block in activeContextBlocks"
@@ -862,7 +1020,8 @@ onBeforeUnmount(() => {
             <div class="section-heading"><span>DATOS</span></div>
             <dl class="stats-list">
               <div><dt>Notas</dt><dd>{{ notes.length }}</dd></div>
-              <div><dt>Tareas abiertas</dt><dd>{{ tasks.filter((task) => !task.checked).length }}</dd></div>
+              <div><dt>Secundarias abiertas</dt><dd>{{ tasks.filter((task) => !task.checked).length }}</dd></div>
+              <div><dt>Misiones principales</dt><dd>{{ mainMissions.length }}</dd></div>
               <div><dt>Cambios offline</dt><dd>{{ syncState.includes('Pendiente') ? 'Sí' : 'No' }}</dd></div>
             </dl>
           </section>
@@ -879,9 +1038,10 @@ onBeforeUnmount(() => {
 
     <nav class="mobile-nav">
       <button :class="{ active: currentView === 'journal' }" @click="mind.openDate(isoDate())"><span>✎</span>Hoy</button>
-      <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')"><span>✓</span>Tareas</button>
+      <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')"><span>✓</span>Secundarias</button>
       <button @click="openSearch"><span>⌕</span>Buscar</button>
       <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')"><span>◷</span>Agenda</button>
+      <button :class="{ active: currentView === 'missions' }" @click="navigate('missions')"><span>✦</span>Principales</button>
       <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')"><span>◎</span>Seguimiento</button>
     </nav>
 
@@ -932,8 +1092,8 @@ onBeforeUnmount(() => {
 
     <div v-if="showContextDialog" class="modal-backdrop" @click.self="showContextDialog = false">
       <form class="small-modal" @submit.prevent="createContext">
-        <p class="eyebrow">NUEVO CONTEXTO</p>
-        <h2>Crea un lugar para reunir trabajo</h2>
+        <p class="eyebrow">NUEVO CAMINO</p>
+        <h2>Crea una misión, persona o zona del mapa</h2>
         <input v-model="newContextName" autofocus placeholder="motor, hogar, Sara…" />
         <label>
           Tipo de contexto
@@ -943,7 +1103,7 @@ onBeforeUnmount(() => {
         </label>
         <div>
           <button type="button" class="secondary-button" @click="showContextDialog = false">Cancelar</button>
-          <button class="primary-button">Crear @contexto</button>
+          <button class="primary-button">Crear @camino</button>
         </div>
       </form>
     </div>

@@ -89,7 +89,7 @@ test('las tareas permiten combinar filtros de contexto, prioridad y etiqueta', a
   ])
 
   assert.match(app, /const priorityFilter = ref\('all'\)/)
-  assert.match(app, /Filtrar tareas por contexto/)
+  assert.match(app, /Filtrar misiones secundarias por contexto o misión principal/)
   assert.match(app, /Filtrar tareas por prioridad/)
   assert.match(app, /Filtrar tareas por etiqueta/)
   assert.match(app, /\(task\.priority \|\| 'base'\) !== priorityFilter\.value/)
@@ -97,6 +97,24 @@ test('las tareas permiten combinar filtros de contexto, prioridad y etiqueta', a
   assert.match(app, /Limpiar filtros/)
   assert.match(styles, /\.task-filter-selects/)
   assert.match(styles, /grid-template-columns:\s*repeat\(3,/)
+})
+
+test('los proyectos se presentan como misiones principales sin cambiar su tipo canónico', async () => {
+  const [app, composable, styles] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(composable, /project:\s*'Misión Principal'/)
+  assert.match(app, /const mainMissions = computed/)
+  assert.match(app, /\(context\.contextType \|\| 'project'\) === 'project'/)
+  assert.match(app, /currentView === 'missions'/)
+  assert.match(app, /Misiones Principales/)
+  assert.match(app, /Misiones Secundarias/)
+  assert.match(app, /supportContexts/)
+  assert.match(styles, /\.mission-board/)
+  assert.match(styles, /\.mission-progress/)
 })
 
 test('contextos y etiquetas desplazan su contenido sin invadir el pie lateral', async () => {
@@ -113,7 +131,8 @@ test('la interfaz móvil usa iconos legibles y objetivos táctiles amplios', asy
 
   assert.match(styles, /\.mobile-menu-button\s*\{[\s\S]*width:\s*40px;[\s\S]*font-size:\s*21px;/)
   assert.match(styles, /\.top-actions \.icon-button\s*\{[\s\S]*font-size:\s*25px;/)
-  assert.match(styles, /\.mobile-nav button span\s*\{\s*font-size:\s*25px;/)
+  assert.match(styles, /\.mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(6, 1fr\);/)
+  assert.match(styles, /\.mobile-nav button span\s*\{\s*font-size:\s*24px;/)
   assert.match(styles, /\.task-toggle\s*\{\s*width:\s*24px;\s*height:\s*24px;/)
   assert.match(styles, /\.block-kind-button\s*\{\s*width:\s*26px;\s*height:\s*26px;/)
 })
