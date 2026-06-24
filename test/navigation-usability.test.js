@@ -108,7 +108,9 @@ test('los proyectos se presentan como misiones principales sin cambiar su tipo c
 
   assert.match(composable, /project:\s*'Misión Principal'/)
   assert.match(app, /const mainMissions = computed/)
-  assert.match(app, /\(context\.contextType \|\| 'project'\) === 'project'/)
+  assert.match(app, /\(context\.contextType \|\| DEFAULT_CONTEXT_TYPE\) === 'project'/)
+  assert.doesNotMatch(app, /contextType \|\| 'project'/)
+  assert.doesNotMatch(composable, /contextType:\s*note\.contextType \|\| 'project'/)
   assert.match(app, /const contextBlocks = context\.blocks \|\| \[\]/)
   assert.doesNotMatch(app, /const recentBlocks = mind\.contextBlocks/)
   assert.match(app, /currentView === 'missions'/)

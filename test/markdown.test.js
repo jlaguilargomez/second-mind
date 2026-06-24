@@ -118,6 +118,7 @@ test('los contextos sin tipo explícito se crean como área', () => {
   assert.equal(note.contextType, 'area')
   assert.match(serializeNote(note), /contextType: area/)
   assert.match(template, /contextType: area/)
+  assert.doesNotMatch(serializeNote(note), /contextType: project/)
 })
 
 test('los contextos importados conservan misiones principales explícitas', () => {

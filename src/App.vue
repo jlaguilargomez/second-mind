@@ -176,7 +176,7 @@ const contextTags = computed(() => {
 })
 const mainMissions = computed(() =>
   contextIndex.value
-    .filter((context) => (context.contextType || 'project') === 'project')
+    .filter((context) => (context.contextType || DEFAULT_CONTEXT_TYPE) === 'project')
     .map((context) => {
       const contextBlocks = context.blocks || []
       const missionTasks = contextBlocks.filter((block) => block.type === 'task')
@@ -204,14 +204,14 @@ const mainMissions = computed(() =>
 )
 const supportContexts = computed(() =>
   contextIndex.value.filter((context) =>
-    ['team', 'area'].includes(context.contextType || 'project'),
+    ['team', 'area'].includes(context.contextType || DEFAULT_CONTEXT_TYPE),
   ),
 )
 const peopleContexts = computed(() =>
   contextIndex.value.filter((context) => context.contextType === 'person'),
 )
 const activeContextIsMainMission = computed(() =>
-  (activeContext.value?.contextType || 'project') === 'project',
+  (activeContext.value?.contextType || DEFAULT_CONTEXT_TYPE) === 'project',
 )
 const waitingTasks = computed(() =>
   tasks.value.filter((task) => !task.checked && isTrackingTask(task)),
@@ -967,7 +967,7 @@ onBeforeUnmount(() => {
                 <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
                 <span>
                   <strong>@{{ context.name }}</strong>
-                  <small>{{ contextTypes[context.contextType || 'project'] }} · {{ context.openTasks }} abiertas · {{ context.count }} menciones</small>
+                  <small>{{ contextTypes[context.contextType || DEFAULT_CONTEXT_TYPE] }} · {{ context.openTasks }} abiertas · {{ context.count }} menciones</small>
                 </span>
               </button>
             </div>
@@ -1019,7 +1019,7 @@ onBeforeUnmount(() => {
                 <label class="context-type-control">
                   Tipo
                   <select
-                    :value="activeContext.contextType || 'project'"
+                    :value="activeContext.contextType || DEFAULT_CONTEXT_TYPE"
                     @change="mind.updateContext(activeContext.noteId, { contextType: $event.target.value })"
                   >
                     <option v-for="(label, value) in contextTypes" :key="value" :value="value">{{ label }}</option>
@@ -1178,7 +1178,7 @@ onBeforeUnmount(() => {
             <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
             <span>
               <strong>@{{ context.name }}</strong>
-              <small>{{ contextTypes[context.contextType || 'project'] }} · {{ context.count }} menciones</small>
+              <small>{{ contextTypes[context.contextType || DEFAULT_CONTEXT_TYPE] }} · {{ context.count }} menciones</small>
             </span>
           </button>
           <button

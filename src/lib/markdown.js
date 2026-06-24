@@ -384,7 +384,7 @@ export function serializeNote(note) {
     ...(note.kind === 'context'
       ? {
           name: note.title,
-          contextType: note.contextType || 'project',
+          contextType: note.contextType || DEFAULT_CONTEXT_TYPE,
           emoji: note.emoji || '◈',
           color: note.color || 'sage',
         }

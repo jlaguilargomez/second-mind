@@ -167,7 +167,7 @@ export function useSecondMind() {
         noteId: note.id,
         emoji: note.emoji === '◈' && entry.emoji ? entry.emoji : note.emoji,
         color: note.color,
-        contextType: note.contextType || 'project',
+        contextType: note.contextType || DEFAULT_CONTEXT_TYPE,
       })
       index.set(key, entry)
     }
