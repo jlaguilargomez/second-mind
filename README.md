@@ -29,15 +29,17 @@ mi-segundo-cerebro/
     └── producto.md
 ```
 
-Los `@contextos` agrupan proyectos o personas y las `#etiquetas` clasifican temas transversales. Los enlaces heredados `[[Producto]]` continúan funcionando como contextos.
+Los `@contextos` agrupan personas, equipos, áreas o zonas de trabajo. Las `#etiquetas` actúan como proyectos: reúnen tareas pendientes, tareas completadas y la bitácora relacionada. Los enlaces heredados `[[Producto]]` continúan funcionando como contextos.
 
-Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área. La vista **Seguimiento** reúne proyectos activos, personas relacionadas y tareas marcadas con `#delegado` o `#esperando`. Mencionar una `@persona` no convierte una tarea propia en seguimiento.
+Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área para conservar compatibilidad con notas existentes, aunque el seguimiento de proyectos se hace desde etiquetas. La vista **Seguimiento** reúne personas relacionadas, equipos/áreas y tareas marcadas con `#delegado` o `#esperando`. Mencionar una `@persona` no convierte una tarea propia en seguimiento.
 
 Las tareas admiten prioridad Base, Media o Alta. Base es el estado silencioso por defecto; Media y Alta se guardan como propiedades Markdown portables y se muestran con indicadores discretos.
 
 Desde un día o una página de contexto se puede copiar la sección completa como Markdown limpio. La copia conserva tareas, subitems, recordatorios y prioridades, pero omite identificadores y timestamps internos.
 
 La vista de tareas admite filtros combinables por estado, contexto, prioridad y etiqueta, además de una acción para restablecer la selección.
+
+La vista de etiquetas presenta cada `#etiqueta` como proyecto con progreso, tareas abiertas, próximas tareas fechadas y bitácora reciente. Abrir una etiqueta muestra su detalle con tareas abiertas, completadas y logs relacionados.
 
 La actividad de cada contexto se presenta cronológicamente, con los diarios más recientes primero y preservando la jerarquía interna de sus bloques.
 

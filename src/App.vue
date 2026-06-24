@@ -31,6 +31,7 @@ const {
   syncState,
   workspaceName,
   conflicts,
+  allBlocks,
   tasks,
   reminders,
   contextIndex,
@@ -73,12 +74,12 @@ const pageTitle = computed(() => {
     })
   }
   if (currentView.value === 'context') return `@${selectedContext.value}`
-  if (currentView.value === 'tasks') return 'Misiones Secundarias'
+  if (currentView.value === 'tasks') return 'Tareas'
   if (currentView.value === 'agenda') return 'Agenda'
-  if (currentView.value === 'missions') return 'Misiones Principales'
   if (currentView.value === 'tracking') return 'Seguimiento'
   if (currentView.value === 'contexts') return 'Contextos'
-  if (currentView.value === 'tags') return 'Etiquetas'
+  if (currentView.value === 'tags' && selectedTag.value) return `#${selectedTag.value}`
+  if (currentView.value === 'tags') return 'Etiquetas / Proyectos'
   return 'Second Mind'
 })
 
@@ -149,24 +150,6 @@ const activeContextBlocks = computed(() =>
 const contextTasks = computed(() =>
   activeContextBlocks.value.filter((block) => block.type === 'task' && !block.checked),
 )
-const contextAllTasks = computed(() =>
-  activeContextBlocks.value.filter((block) => block.type === 'task'),
-)
-const activeContextProgress = computed(() => {
-  const total = contextAllTasks.value.length
-  const completed = contextAllTasks.value.filter((task) => task.checked).length
-  return {
-    completed,
-    total,
-    percent: total ? Math.round((completed / total) * 100) : 0,
-  }
-})
-const activeContextUpcomingTasks = computed(() =>
-  contextTasks.value
-    .filter((task) => task.reminder)
-    .sort((a, b) => (a.reminder || '').localeCompare(b.reminder || ''))
-    .slice(0, 3),
-)
 const contextTags = computed(() => {
   const counts = new Map()
   for (const block of activeContextBlocks.value) {
@@ -174,33 +157,53 @@ const contextTags = computed(() => {
   }
   return [...counts.entries()].map(([name, count]) => ({ name, count }))
 })
-const mainMissions = computed(() =>
-  contextIndex.value
-    .filter((context) => (context.contextType || DEFAULT_CONTEXT_TYPE) === 'project')
-    .map((context) => {
-      const contextBlocks = context.blocks || []
-      const missionTasks = contextBlocks.filter((block) => block.type === 'task')
-      const completedTasks = missionTasks.filter((task) => task.checked).length
-      const upcomingTasks = missionTasks
-        .filter((task) => !task.checked && task.reminder)
+const tagProjects = computed(() =>
+  tags.value
+    .map((tag) => {
+      const projectBlocks = allBlocks.value.filter((block) => block.tags.includes(tag.name))
+      const projectTasks = projectBlocks.filter((block) => block.type === 'task')
+      const completedTasks = projectTasks.filter((task) => task.checked).length
+      const openTasks = projectTasks.filter((task) => !task.checked)
+      const upcomingTasks = openTasks
+        .filter((task) => task.reminder)
         .sort((a, b) => (a.reminder || '').localeCompare(b.reminder || ''))
         .slice(0, 3)
-      const recentBlocks = sortContextBlocksByDate(contextBlocks)
-        .filter((block) => block.content?.trim())
+      const recentBlocks = sortContextBlocksByDate(projectBlocks)
+        .filter((block) => block.type !== 'task' && block.content?.trim())
         .slice(0, 3)
 
       return {
-        ...context,
-        totalTasks: missionTasks.length,
+        ...tag,
+        blocks: projectBlocks,
+        openTasks,
+        totalTasks: projectTasks.length,
         completedTasks,
-        progressPercent: missionTasks.length
-          ? Math.round((completedTasks / missionTasks.length) * 100)
+        progressPercent: projectTasks.length
+          ? Math.round((completedTasks / projectTasks.length) * 100)
           : 0,
         upcomingTasks,
         recentBlocks,
       }
     })
-    .sort((a, b) => b.openTasks - a.openTasks || a.name.localeCompare(b.name)),
+    .sort((a, b) => b.openTasks.length - a.openTasks.length || b.count - a.count),
+)
+const activeTagProject = computed(() =>
+  selectedTag.value
+    ? tagProjects.value.find((tag) => tag.name.toLocaleLowerCase() === selectedTag.value.toLocaleLowerCase())
+    : null,
+)
+const activeTagOpenTasks = computed(() =>
+  activeTagProject.value?.blocks.filter((block) => block.type === 'task' && !block.checked) || [],
+)
+const activeTagCompletedTasks = computed(() =>
+  activeTagProject.value?.blocks.filter((block) => block.type === 'task' && block.checked) || [],
+)
+const activeTagRecentBlocks = computed(() =>
+  activeTagProject.value
+    ? sortContextBlocksByDate(activeTagProject.value.blocks)
+      .filter((block) => block.type !== 'task' && block.content?.trim())
+      .slice(0, 8)
+    : [],
 )
 const supportContexts = computed(() =>
   contextIndex.value.filter((context) =>
@@ -209,9 +212,6 @@ const supportContexts = computed(() =>
 )
 const peopleContexts = computed(() =>
   contextIndex.value.filter((context) => context.contextType === 'person'),
-)
-const activeContextIsMainMission = computed(() =>
-  (activeContext.value?.contextType || DEFAULT_CONTEXT_TYPE) === 'project',
 )
 const waitingTasks = computed(() =>
   tasks.value.filter((task) => !task.checked && isTrackingTask(task)),
@@ -292,6 +292,16 @@ function openContext(name) {
 }
 
 function openTag(name) {
+  selectedTag.value = name
+  navigate('tags')
+}
+
+function openTagsIndex() {
+  selectedTag.value = null
+  navigate('tags')
+}
+
+function viewTagTasks(name) {
   selectedTag.value = name
   taskFilter.value = 'all'
   navigate('tasks')
@@ -525,16 +535,12 @@ onBeforeUnmount(() => {
           <span>✎</span> Diario
         </button>
         <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')">
-          <span>✓</span> Secundarias
+          <span>✓</span> Tareas
           <small>{{ tasks.filter((task) => !task.checked).length }}</small>
         </button>
         <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')">
           <span>◷</span> Agenda
           <small>{{ reminders.length }}</small>
-        </button>
-        <button :class="{ active: currentView === 'missions' }" @click="navigate('missions')">
-          <span>✦</span> Principales
-          <small>{{ mainMissions.length }}</small>
         </button>
         <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')">
           <span>◎</span> Seguimiento
@@ -544,9 +550,9 @@ onBeforeUnmount(() => {
           <span>@</span> Contextos
           <small>{{ contextIndex.length }}</small>
         </button>
-        <button :class="{ active: currentView === 'tags' }" @click="navigate('tags')">
+        <button :class="{ active: currentView === 'tags' }" @click="openTagsIndex">
           <span>#</span> Etiquetas
-          <small>{{ tags.length }}</small>
+          <small>{{ tagProjects.length }}</small>
         </button>
         <button @click="openSearch"><span>⌕</span> Buscar <kbd>⌘ K</kbd></button>
       </nav>
@@ -580,7 +586,7 @@ onBeforeUnmount(() => {
 
       <section v-if="tags.length" class="sidebar-section tags-section">
         <div class="section-heading">
-          <button class="heading-link" @click="navigate('tags')">ETIQUETAS</button>
+          <button class="heading-link" @click="openTagsIndex">ETIQUETAS</button>
         </div>
         <div
           v-for="tag in tags.slice(0, 8)"
@@ -704,9 +710,9 @@ onBeforeUnmount(() => {
 
           <template v-else-if="currentView === 'tasks'">
             <div class="page-heading">
-              <p class="eyebrow">MISIONES SECUNDARIAS</p>
-              <h1>Misiones Secundarias</h1>
-              <p>Acciones concretas para avanzar la aventura sin perder el día ni el contexto donde nacieron.</p>
+              <p class="eyebrow">TAREAS</p>
+              <h1>Tareas</h1>
+              <p>Acciones concretas reunidas por estado, contexto, prioridad y proyecto.</p>
             </div>
             <div class="filter-bar">
               <div class="status-filters" aria-label="Estado de las tareas">
@@ -719,8 +725,8 @@ onBeforeUnmount(() => {
               </div>
               <div class="task-filter-selects">
                 <label>
-                  <span>Camino</span>
-                  <select v-model="contextFilter" aria-label="Filtrar misiones secundarias por contexto o misión principal">
+                  <span>Contexto</span>
+                  <select v-model="contextFilter" aria-label="Filtrar tareas por contexto">
                     <option value="all">Todos</option>
                     <option v-for="context in contextIndex" :key="context.name" :value="context.name">
                       @{{ context.name }}
@@ -797,73 +803,7 @@ onBeforeUnmount(() => {
                 </button>
               </article>
             </div>
-            <div v-else class="empty-state">No hay misiones secundarias para estos filtros. Un pequeño milagro.</div>
-          </template>
-
-          <template v-else-if="currentView === 'missions'">
-            <div class="page-heading">
-              <p class="eyebrow">MISIONES PRINCIPALES</p>
-              <h1>Misiones Principales</h1>
-              <p>Caminos largos con secundarias, bitácora y próximos pasos en un solo mapa.</p>
-            </div>
-
-            <div v-if="mainMissions.length" class="mission-board">
-              <article
-                v-for="mission in mainMissions"
-                :key="mission.name"
-                class="mission-card"
-                :class="`context-${mission.color || 'sage'}`"
-              >
-                <button class="mission-card-main" @click="openContext(mission.name)">
-                  <b :class="`context-dot color-${mission.color || 'sage'}`">{{ mission.emoji || '✦' }}</b>
-                  <span>
-                    <small>Misión Principal</small>
-                    <strong>@{{ mission.name }}</strong>
-                  </span>
-                </button>
-                <div class="mission-progress" :style="{ '--mission-progress': `${mission.progressPercent}%` }">
-                  <div>
-                    <span>{{ mission.completedTasks }}/{{ mission.totalTasks }}</span>
-                    <small>secundarias completadas</small>
-                  </div>
-                  <i></i>
-                </div>
-                <div class="mission-stats">
-                  <span>{{ mission.openTasks }} abiertas</span>
-                  <span>{{ mission.count }} menciones</span>
-                  <span>{{ mission.progressPercent }}%</span>
-                </div>
-                <div v-if="mission.upcomingTasks.length" class="mission-preview">
-                  <strong>Próximas</strong>
-                  <button
-                    v-for="task in mission.upcomingTasks"
-                    :key="task.id"
-                    @click="openTask(task)"
-                  >
-                    <time>{{ formatReminderDate(task.reminder, { short: true, year: false }) }}</time>
-                    <span>{{ task.content }}</span>
-                  </button>
-                </div>
-                <div v-else class="mission-preview muted">
-                  <strong>Próximas</strong>
-                  <p>Sin fecha marcada. El camino espera una señal.</p>
-                </div>
-                <div v-if="mission.recentBlocks.length" class="mission-preview">
-                  <strong>Bitácora</strong>
-                  <button
-                    v-for="block in mission.recentBlocks"
-                    :key="block.id"
-                    @click="openTask(block)"
-                  >
-                    <time>{{ block.noteDate || block.noteTitle }}</time>
-                    <span>{{ block.content }}</span>
-                  </button>
-                </div>
-              </article>
-            </div>
-            <div v-else class="empty-state">
-              Crea un contexto de tipo Misión Principal para abrir el primer camino.
-            </div>
+            <div v-else class="empty-state">No hay tareas para estos filtros.</div>
           </template>
 
           <template v-else-if="currentView === 'agenda'">
@@ -973,47 +913,153 @@ onBeforeUnmount(() => {
           </template>
 
           <template v-else-if="currentView === 'tags'">
-            <div class="page-heading">
-              <p class="eyebrow">ÍNDICE COMPLETO</p>
-              <h1>Etiquetas</h1>
-              <p>{{ pluralize(tags.length, 'etiqueta') }} para filtrar tareas y entradas.</p>
+            <div v-if="!activeTagProject" class="page-heading">
+              <p class="eyebrow">PROYECTOS POR ETIQUETA</p>
+              <h1>Etiquetas / Proyectos</h1>
+              <p>{{ pluralize(tagProjects.length, 'etiqueta') }} con tareas, progreso y bitácora.</p>
             </div>
 
-            <div v-if="tags.length" class="entity-directory tag-directory">
-              <button
-                v-for="tag in tags"
+            <div v-if="!activeTagProject && tagProjects.length" class="project-board">
+              <article
+                v-for="tag in tagProjects"
                 :key="tag.name"
-                :class="{ active: selectedTag === tag.name }"
-                @click="openTag(tag.name)"
+                class="project-card"
               >
-                <span><strong>#{{ tag.name }}</strong><small>{{ pluralize(tag.count, 'mención', 'menciones') }}</small></span>
-              </button>
+                <button class="project-card-main" @click="openTag(tag.name)">
+                  <span>
+                    <small>Proyecto</small>
+                    <strong>#{{ tag.name }}</strong>
+                  </span>
+                </button>
+                <div class="project-progress" :style="{ '--project-progress': `${tag.progressPercent}%` }">
+                  <div>
+                    <span>{{ tag.completedTasks }}/{{ tag.totalTasks }}</span>
+                    <small>tareas completadas</small>
+                  </div>
+                  <i></i>
+                </div>
+                <div class="project-stats">
+                  <span>{{ tag.openTasks.length }} abiertas</span>
+                  <span>{{ tag.count }} menciones</span>
+                  <span>{{ tag.progressPercent }}%</span>
+                </div>
+                <div v-if="tag.upcomingTasks.length" class="project-preview">
+                  <strong>Próximas</strong>
+                  <button
+                    v-for="task in tag.upcomingTasks"
+                    :key="task.id"
+                    @click="openTask(task)"
+                  >
+                    <time>{{ formatReminderDate(task.reminder, { short: true, year: false }) }}</time>
+                    <span>{{ task.content }}</span>
+                  </button>
+                </div>
+                <div v-if="tag.recentBlocks.length" class="project-preview">
+                  <strong>Bitácora</strong>
+                  <button
+                    v-for="block in tag.recentBlocks"
+                    :key="block.id"
+                    @click="openTask(block)"
+                  >
+                    <time>{{ block.noteDate || block.noteTitle }}</time>
+                    <span>{{ block.content }}</span>
+                  </button>
+                </div>
+              </article>
             </div>
-            <div v-else class="empty-state">Aún no hay etiquetas.</div>
+            <div v-else-if="!activeTagProject" class="empty-state">Aún no hay etiquetas.</div>
+
+            <template v-if="activeTagProject">
+              <div class="tag-hero">
+                <span>#</span>
+                <div>
+                  <p class="eyebrow">PROYECTO</p>
+                  <h1>#{{ activeTagProject.name }}</h1>
+                  <p>
+                    {{ activeTagProject.completedTasks }}/{{ activeTagProject.totalTasks }} tareas completadas ·
+                    {{ activeTagOpenTasks.length }} abiertas ·
+                    {{ activeTagProject.count }} menciones
+                  </p>
+                  <div class="project-progress context-progress" :style="{ '--project-progress': `${activeTagProject.progressPercent}%` }">
+                    <div>
+                      <span>{{ activeTagProject.progressPercent }}%</span>
+                      <small>avance</small>
+                    </div>
+                    <i></i>
+                  </div>
+                  <div class="tag-hero-actions">
+                    <button class="primary-button" @click="viewTagTasks(activeTagProject.name)">Ver tareas</button>
+                    <button class="secondary-button" @click="selectedTag = null">Todas las etiquetas</button>
+                    <button class="delete-context-button" @click="deleteTag(activeTagProject.name)">
+                      Eliminar etiqueta
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <section class="context-section">
+                <div class="section-title"><h2>Tareas abiertas</h2><span>{{ activeTagOpenTasks.length }}</span></div>
+                <article v-for="task in activeTagOpenTasks" :key="task.id" class="task-card compact">
+                  <button
+                    class="task-toggle"
+                    aria-label="Completar tarea"
+                    :aria-pressed="false"
+                    @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
+                  ></button>
+                  <div @click="openTask(task)">
+                    <RichText :text="task.content" @context="openContext" @tag="openTag" />
+                    <small>{{ task.noteDate || task.noteTitle }}</small>
+                  </div>
+                  <button class="reminder-button" @click="editReminder(task)">◷</button>
+                </article>
+                <p v-if="!activeTagOpenTasks.length" class="empty-copy">No hay tareas abiertas para este proyecto.</p>
+              </section>
+
+              <section class="context-section">
+                <div class="section-title"><h2>Tareas completadas</h2><span>{{ activeTagCompletedTasks.length }}</span></div>
+                <article
+                  v-for="task in activeTagCompletedTasks"
+                  :key="task.id"
+                  class="task-card compact completed"
+                >
+                  <button
+                    class="task-toggle"
+                    aria-label="Reabrir tarea"
+                    :aria-pressed="true"
+                    @click="mind.updateBlock(task.noteId, task.id, { checked: false })"
+                  >✓</button>
+                  <div @click="openTask(task)">
+                    <RichText :text="task.content" @context="openContext" @tag="openTag" />
+                    <small>{{ task.noteDate || task.noteTitle }}</small>
+                  </div>
+                </article>
+                <p v-if="!activeTagCompletedTasks.length" class="empty-copy">Todavía no hay tareas completadas.</p>
+              </section>
+
+              <section class="context-section">
+                <div class="section-title"><h2>Bitácora</h2><span>{{ activeTagRecentBlocks.length }}</span></div>
+                <div class="activity-timeline">
+                  <article
+                    v-for="block in activeTagRecentBlocks"
+                    :key="block.id"
+                    @click="openTask(block)"
+                  >
+                    <time>{{ block.noteDate || block.noteTitle }}</time>
+                    <p><RichText :text="block.content" @context="openContext" @tag="openTag" /></p>
+                  </article>
+                </div>
+                <p v-if="!activeTagRecentBlocks.length" class="empty-copy">Aún no hay logs para esta etiqueta.</p>
+              </section>
+            </template>
           </template>
 
           <template v-else-if="currentView === 'context' && activeContext">
             <div class="context-hero" :class="`context-${activeContext.color || 'sage'}`">
               <span>{{ activeContext.emoji || '◈' }}</span>
               <div>
-                <p class="eyebrow">{{ activeContextIsMainMission ? 'MISIÓN PRINCIPAL' : 'CONTEXTO' }}</p>
+                <p class="eyebrow">CONTEXTO</p>
                 <h1>@{{ activeContext.name }}</h1>
-                <p v-if="activeContextIsMainMission">
-                  {{ activeContextProgress.completed }}/{{ activeContextProgress.total }} secundarias completadas ·
-                  {{ activeContext.openTasks }} abiertas · {{ activeContext.count }} menciones
-                </p>
-                <p v-else>{{ activeContext.count }} menciones · {{ activeContext.openTasks }} tareas abiertas</p>
-                <div
-                  v-if="activeContextIsMainMission"
-                  class="mission-progress context-progress"
-                  :style="{ '--mission-progress': `${activeContextProgress.percent}%` }"
-                >
-                  <div>
-                    <span>{{ activeContextProgress.percent }}%</span>
-                    <small>avance del camino</small>
-                  </div>
-                  <i></i>
-                </div>
+                <p>{{ activeContext.count }} menciones · {{ activeContext.openTasks }} tareas abiertas</p>
                 <label class="context-type-control">
                   Tipo
                   <select
@@ -1031,7 +1077,7 @@ onBeforeUnmount(() => {
 
             <section v-if="contextTasks.length" class="context-section">
               <div class="section-title">
-                <h2>{{ activeContextIsMainMission ? 'Misiones secundarias abiertas' : 'Tareas abiertas' }}</h2>
+                <h2>Tareas abiertas</h2>
                 <span>{{ contextTasks.length }}</span>
               </div>
               <article v-for="task in contextTasks" :key="task.id" class="task-card compact">
@@ -1056,23 +1102,9 @@ onBeforeUnmount(() => {
               </article>
             </section>
 
-            <section
-              v-if="activeContextIsMainMission && activeContextUpcomingTasks.length"
-              class="context-section"
-            >
-              <div class="section-title"><h2>Próximas señales</h2><span>{{ activeContextUpcomingTasks.length }}</span></div>
-              <article v-for="task in activeContextUpcomingTasks" :key="task.id" class="agenda-item">
-                <time>{{ formatReminderDate(task.reminder) }}</time>
-                <button @click="openTask(task)">
-                  <RichText :text="task.content" @context="openContext" @tag="openTag" />
-                </button>
-                <button aria-label="Reprogramar" @click="editReminder(task)">•••</button>
-              </article>
-            </section>
-
             <section class="context-section">
               <div class="section-title">
-                <h2>{{ activeContextIsMainMission ? 'Bitácora del camino' : 'Actividad reciente' }}</h2>
+                <h2>Actividad reciente</h2>
                 <span>{{ activeContextBlocks.length }}</span>
               </div>
               <div class="activity-timeline">
@@ -1129,8 +1161,8 @@ onBeforeUnmount(() => {
             <div class="section-heading"><span>DATOS</span></div>
             <dl class="stats-list">
               <div><dt>Notas</dt><dd>{{ notes.length }}</dd></div>
-              <div><dt>Secundarias abiertas</dt><dd>{{ tasks.filter((task) => !task.checked).length }}</dd></div>
-              <div><dt>Misiones principales</dt><dd>{{ mainMissions.length }}</dd></div>
+              <div><dt>Tareas abiertas</dt><dd>{{ tasks.filter((task) => !task.checked).length }}</dd></div>
+              <div><dt>Proyectos</dt><dd>{{ tagProjects.length }}</dd></div>
               <div><dt>Cambios offline</dt><dd>{{ syncState.includes('Pendiente') ? 'Sí' : 'No' }}</dd></div>
             </dl>
           </section>
@@ -1147,10 +1179,10 @@ onBeforeUnmount(() => {
 
     <nav class="mobile-nav">
       <button :class="{ active: currentView === 'journal' }" @click="mind.openDate(isoDate())"><span>✎</span>Hoy</button>
-      <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')"><span>✓</span>Secundarias</button>
+      <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')"><span>✓</span>Tareas</button>
       <button @click="openSearch"><span>⌕</span>Buscar</button>
       <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')"><span>◷</span>Agenda</button>
-      <button :class="{ active: currentView === 'missions' }" @click="navigate('missions')"><span>✦</span>Principales</button>
+      <button :class="{ active: currentView === 'tags' }" @click="openTagsIndex"><span>#</span>Etiquetas</button>
       <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')"><span>◎</span>Seguimiento</button>
     </nav>
 
@@ -1201,8 +1233,8 @@ onBeforeUnmount(() => {
 
     <div v-if="showContextDialog" class="modal-backdrop" @click.self="showContextDialog = false">
       <form class="small-modal" @submit.prevent="createContext">
-        <p class="eyebrow">NUEVO CAMINO</p>
-        <h2>Crea una misión, persona o zona del mapa</h2>
+        <p class="eyebrow">NUEVO CONTEXTO</p>
+        <h2>Crea una persona, equipo o zona del mapa</h2>
         <input v-model="newContextName" autofocus placeholder="motor, hogar, Sara…" />
         <label>
           Tipo de contexto

@@ -121,7 +121,7 @@ test('los contextos sin tipo explícito se crean como área', () => {
   assert.doesNotMatch(serializeNote(note), /contextType: project/)
 })
 
-test('los contextos importados conservan misiones principales explícitas', () => {
+test('los contextos importados conservan proyectos explícitos', () => {
   const note = normalizeNote({
     filename: 'motor.md',
     markdown: `---

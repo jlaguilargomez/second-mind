@@ -89,7 +89,7 @@ test('las tareas permiten combinar filtros de contexto, prioridad y etiqueta', a
   ])
 
   assert.match(app, /const priorityFilter = ref\('all'\)/)
-  assert.match(app, /Filtrar misiones secundarias por contexto o misión principal/)
+  assert.match(app, /Filtrar tareas por contexto/)
   assert.match(app, /Filtrar tareas por prioridad/)
   assert.match(app, /Filtrar tareas por etiqueta/)
   assert.match(app, /\(task\.priority \|\| 'base'\) !== priorityFilter\.value/)
@@ -99,26 +99,29 @@ test('las tareas permiten combinar filtros de contexto, prioridad y etiqueta', a
   assert.match(styles, /grid-template-columns:\s*repeat\(3,/)
 })
 
-test('los proyectos se presentan como misiones principales sin cambiar su tipo canónico', async () => {
+test('las etiquetas se presentan como proyectos sin cambiar el Markdown canónico', async () => {
   const [app, composable, styles] = await Promise.all([
     readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
     readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
   ])
 
-  assert.match(composable, /project:\s*'Misión Principal'/)
-  assert.match(app, /const mainMissions = computed/)
-  assert.match(app, /\(context\.contextType \|\| DEFAULT_CONTEXT_TYPE\) === 'project'/)
+  assert.match(composable, /project:\s*'Proyecto'/)
+  assert.match(app, /const tagProjects = computed/)
+  assert.match(app, /const activeTagProject = computed/)
+  assert.match(app, /PROYECTOS POR ETIQUETA/)
+  assert.match(app, /Etiquetas \/ Proyectos/)
+  assert.match(app, /Tareas abiertas/)
+  assert.match(app, /Tareas completadas/)
+  assert.match(app, /Bitácora/)
   assert.doesNotMatch(app, /contextType \|\| 'project'/)
   assert.doesNotMatch(composable, /contextType:\s*note\.contextType \|\| 'project'/)
-  assert.match(app, /const contextBlocks = context\.blocks \|\| \[\]/)
-  assert.doesNotMatch(app, /const recentBlocks = mind\.contextBlocks/)
-  assert.match(app, /currentView === 'missions'/)
-  assert.match(app, /Misiones Principales/)
-  assert.match(app, /Misiones Secundarias/)
+  assert.doesNotMatch(app, /currentView === 'missions'/)
+  assert.doesNotMatch(app, /Misiones Principales/)
+  assert.doesNotMatch(app, /Misiones Secundarias/)
   assert.match(app, /supportContexts/)
-  assert.match(styles, /\.mission-board/)
-  assert.match(styles, /\.mission-progress/)
+  assert.match(styles, /\.project-board/)
+  assert.match(styles, /\.project-progress/)
 })
 
 test('el formulario de nuevo contexto usa área como tipo predeterminado', async () => {

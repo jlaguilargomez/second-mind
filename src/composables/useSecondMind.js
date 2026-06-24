@@ -33,7 +33,7 @@ const LEGACY_LOCAL_KEY = 'second-mind-notes-v1'
 const contextPalette = ['sage', 'blue', 'amber', 'violet', 'rose']
 const contextEmojis = ['◈', '●', '◆', '✦', '⬡']
 export const contextTypes = {
-  project: 'Misión Principal',
+  project: 'Proyecto',
   person: 'Persona',
   team: 'Equipo',
   area: 'Área',
