@@ -549,7 +549,7 @@ onBeforeUnmount(() => {
     >
       <span>＋</span>
       <strong>Añadir entrada</strong>
-      <small>Intro para seguir · + tarea · &gt; título</small>
+      <small>Intro para seguir · + tarea · - entrada · &gt; título</small>
     </button>
   </div>
 </template>

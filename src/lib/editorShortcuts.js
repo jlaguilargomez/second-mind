@@ -1,5 +1,6 @@
 const captureShortcuts = {
   '+': { type: 'task', content: '', patch: {} },
+  '-': { type: 'log', content: '', patch: {} },
   '>': { type: 'heading', content: '', patch: { level: 2 } },
 }
 

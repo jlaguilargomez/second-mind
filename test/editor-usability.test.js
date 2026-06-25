@@ -14,7 +14,7 @@ test('el editor expone tipos de bloque y una acción clara para añadir entradas
   assert.doesNotMatch(editor, /\{ value: 'text',/)
   assert.match(editor, /class="add-entry-button"/)
   assert.match(editor, /Añadir entrada/)
-  assert.match(editor, /Intro para seguir · \+ tarea · &gt; título/)
+  assert.match(editor, /Intro para seguir · \+ tarea · - entrada · &gt; título/)
 })
 
 test('las tareas cambian prioridad con un único control contextual', async () => {
