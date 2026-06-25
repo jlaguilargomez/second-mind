@@ -82,6 +82,23 @@ test('el día y el contexto permiten copiar una sección Markdown limpia', async
   assert.match(styles, /\.copy-section-button\.copied/)
 })
 
+test('el diario puede aplicar y editar una plantilla diaria personalizable', async () => {
+  const [app, styles] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /const canApplyDailyTemplate = computed/)
+  assert.match(app, /function openTemplateDialog\(\)/)
+  assert.match(app, /function saveTemplateDialog\(\)/)
+  assert.match(app, /Usar plantilla/)
+  assert.match(app, /Editar plantilla diaria/)
+  assert.match(app, /PLANTILLA DIARIA/)
+  assert.match(app, /Guardar plantilla/)
+  assert.match(styles, /\.template-modal/)
+  assert.match(styles, /\.page-heading-actions/)
+})
+
 test('las tareas permiten combinar filtros de contexto, prioridad y etiqueta', async () => {
   const [app, styles] = await Promise.all([
     readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),

@@ -18,15 +18,28 @@ import {
   serializeNote,
   sortContextBlocksByDate,
 } from '../lib/markdown'
+import {
+  cloneTemplateBlocks,
+  createDefaultWorkspaceSettings,
+  createJournalNote,
+  createTemplateEditorNote,
+  extractTemplateBlocksFromNote,
+  isBaseJournal,
+  normalizeWorkspaceSettings,
+  resolveActiveDailyTemplate,
+  WORKSPACE_SETTINGS_KEY,
+} from '../lib/templates'
 import { LocalRepository } from '../repositories/LocalRepository'
 import {
   getDirectoryHandle,
   readMarkdownTree,
   readWorkspace,
+  readWorkspaceManifest,
   removeNote,
   saveDirectoryHandle,
   verifyPermission,
   writeNote,
+  writeWorkspaceManifest,
 } from '../lib/storage'
 
 const LEGACY_LOCAL_KEY = 'second-mind-notes-v1'
@@ -43,11 +56,7 @@ function createStarterNotes() {
   const date = isoDate()
   return [
     normalizeNote({
-      id: createId(),
-      kind: 'journal',
-      filename: `${date}.md`,
-      date,
-      title: date,
+      ...createJournalNote(date),
       blocks: [
         { ...createBlock('heading', date), level: 1 },
         { ...createBlock('heading', 'Second Mind v2'), level: 2 },
@@ -90,6 +99,7 @@ function importIdentity(note) {
 export function useSecondMind() {
   const repository = new LocalRepository()
   const notes = ref([])
+  const workspaceSettings = ref(createDefaultWorkspaceSettings())
   const activeNoteId = ref(null)
   const currentView = ref('journal')
   const selectedDate = ref(isoDate())
@@ -109,6 +119,9 @@ export function useSecondMind() {
   }
 
   const activeNote = computed(() => notes.value.find((note) => note.id === activeNoteId.value))
+  const dailyTemplates = computed(() => workspaceSettings.value.dailyTemplates || [])
+  const activeDailyTemplateId = computed(() => workspaceSettings.value.activeDailyTemplateId || null)
+  const activeDailyTemplate = computed(() => resolveActiveDailyTemplate(workspaceSettings.value))
   const journals = computed(() =>
     notes.value
       .filter((note) => note.kind === 'journal')
@@ -206,8 +219,36 @@ export function useSecondMind() {
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
   })
 
+  function createWorkspaceManifest() {
+    return {
+      exportedAt: new Date().toISOString(),
+      format: 'second-mind-v2',
+      noteCount: notes.value.length,
+      settings: workspaceSettings.value,
+    }
+  }
+
+  async function loadSavedSettings() {
+    const stored = await repository.getSetting(WORKSPACE_SETTINGS_KEY)
+    workspaceSettings.value = normalizeWorkspaceSettings(stored?.value || stored || {})
+  }
+
+  async function persistWorkspaceSettings() {
+    workspaceSettings.value = normalizeWorkspaceSettings(workspaceSettings.value)
+    await repository.setSetting(WORKSPACE_SETTINGS_KEY, workspaceSettings.value)
+    if (directoryHandle.value) {
+      await writeWorkspaceManifest(directoryHandle.value, createWorkspaceManifest())
+    }
+  }
+
+  async function applyWorkspaceManifest(manifest = null) {
+    workspaceSettings.value = normalizeWorkspaceSettings(manifest?.settings || {})
+    await repository.setSetting(WORKSPACE_SETTINGS_KEY, workspaceSettings.value)
+  }
+
   async function initialize() {
     await repository.initialize()
+    await loadSavedSettings()
     let stored = await repository.listNotes()
     if (!stored.length) {
       const legacy = localStorage.getItem(LEGACY_LOCAL_KEY)
@@ -257,6 +298,7 @@ export function useSecondMind() {
     if (!directoryHandle.value) return []
     syncState.value = 'Recargando carpeta…'
     const diskNotes = await readWorkspace(directoryHandle.value)
+    await applyWorkspaceManifest(diskNotes.workspaceManifest)
     const workspaceNotes = await applyWorkspaceNotes(diskNotes)
     syncState.value = settledSyncState()
     return workspaceNotes
@@ -309,17 +351,7 @@ export function useSecondMind() {
     currentView.value = 'journal'
     let note = journals.value.find((item) => item.date === date)
     if (!note) {
-      note = normalizeNote({
-        id: createId(),
-        kind: 'journal',
-        filename: `${date}.md`,
-        date,
-        title: date,
-        blocks: [
-          { ...createBlock('heading', date), level: 1 },
-          createBlock('log', ''),
-        ],
-      })
+      note = createJournalNote(date)
       replaceNote(note)
       await persistNote(note, { immediate: true })
     }
@@ -543,11 +575,73 @@ export function useSecondMind() {
     })
   }
 
+  function buildTemplateEditorNote(templateId = activeDailyTemplateId.value) {
+    const template = dailyTemplates.value.find((item) => item.id === templateId) || null
+    return createTemplateEditorNote(template)
+  }
+
+  async function saveDailyTemplate(templateId, patch = {}) {
+    const existing = dailyTemplates.value.find((template) => template.id === templateId)
+    const nextTemplate = {
+      ...(existing || { id: templateId || createId(), name: 'Plantilla diaria', blocks: [] }),
+      ...patch,
+      id: existing?.id || templateId || createId(),
+    }
+    const preservedTemplates = dailyTemplates.value.filter((template) => template.id !== nextTemplate.id)
+    workspaceSettings.value = normalizeWorkspaceSettings({
+      dailyTemplates: [...preservedTemplates, nextTemplate],
+      activeDailyTemplateId: activeDailyTemplateId.value || nextTemplate.id,
+    })
+    await persistWorkspaceSettings()
+    return workspaceSettings.value.dailyTemplates.find((template) => template.id === nextTemplate.id) || null
+  }
+
+  async function saveDailyTemplateFromNote(templateId, note, patch = {}) {
+    return saveDailyTemplate(templateId, {
+      ...patch,
+      blocks: extractTemplateBlocksFromNote(note),
+    })
+  }
+
+  async function ensurePrimaryDailyTemplate() {
+    if (dailyTemplates.value.length) return activeDailyTemplate.value || dailyTemplates.value[0]
+    return saveDailyTemplate(createId(), {
+      name: 'Plantilla diaria',
+      blocks: [],
+      isDefault: true,
+      order: 0,
+    })
+  }
+
+  function canApplyDailyTemplateToNote(note) {
+    return Boolean(activeDailyTemplate.value && isBaseJournal(note) && activeDailyTemplate.value.blocks.length)
+  }
+
+  async function applyDailyTemplate(noteId, templateId = activeDailyTemplateId.value) {
+    const note = notes.value.find((item) => item.id === noteId)
+    if (!note || !isBaseJournal(note)) return false
+    const template = dailyTemplates.value.find((item) => item.id === templateId)
+      || resolveActiveDailyTemplate(workspaceSettings.value)
+    if (!template || !template.blocks.length) return false
+
+    const updated = normalizeNote({
+      ...note,
+      blocks: [note.blocks[0], ...cloneTemplateBlocks(template.blocks)],
+      markdown: undefined,
+    })
+    replaceNote(updated)
+    await persistNote(updated, { immediate: true })
+    return true
+  }
+
   async function importFiles(files) {
     const imports = []
+    let importedManifest = null
     for (const file of files) {
       if (file.name.toLowerCase().endsWith('.zip')) {
         const archive = await JSZip.loadAsync(file)
+        const manifestEntry = archive.file('second-mind.json')
+        if (manifestEntry) importedManifest = JSON.parse(await manifestEntry.async('string'))
         const entries = Object.values(archive.files).filter(
           (entry) => !entry.dir && entry.name.toLowerCase().endsWith('.md'),
         )
@@ -563,7 +657,7 @@ export function useSecondMind() {
         createImportedNote(file.name, await file.text(), file.lastModified, file.webkitRelativePath),
       )
     }
-    await importNotes(imports)
+    await importNotes(imports, importedManifest)
   }
 
   async function importDirectory() {
@@ -574,11 +668,14 @@ export function useSecondMind() {
     const imports = markdownFiles.map((file) =>
       createImportedNote(file.filename, file.markdown, file.updatedAt, file.path),
     )
-    await importNotes(imports)
+    await importNotes(imports, markdownFiles.workspaceManifest)
   }
 
-  async function importNotes(imports) {
-    if (!imports.length) return
+  async function importNotes(imports, manifest = null) {
+    if (!imports.length) {
+      if (manifest) await applyWorkspaceManifest(manifest)
+      return
+    }
 
     const existingByIdentity = new Map(notes.value.map((note) => [importIdentity(note), note]))
     const importsByIdentity = new Map()
@@ -597,8 +694,10 @@ export function useSecondMind() {
       ...importedNotes,
     ]
     await repository.saveNotes(importedNotes)
+    if (manifest) await applyWorkspaceManifest(manifest)
     if (directoryHandle.value) {
       for (const note of importedNotes) await writeNote(directoryHandle.value, note)
+      await writeWorkspaceManifest(directoryHandle.value, createWorkspaceManifest())
     } else {
       hasPendingLocalImport = true
     }
@@ -626,6 +725,7 @@ export function useSecondMind() {
     const diskNotes = await readWorkspace(handle)
     if (diskNotes.length && !hasPendingLocalImport) {
       await applyWorkspaceNotes(diskNotes)
+      await applyWorkspaceManifest(diskNotes.workspaceManifest)
     } else {
       const notesToWrite = hasPendingLocalImport
         ? mergeImportedNotesWithDisk(diskNotes)
@@ -633,6 +733,11 @@ export function useSecondMind() {
       notes.value = notesToWrite
       for (const note of notesToWrite) await writeNote(handle, note)
       await repository.replaceAllNotes(notesToWrite)
+      if (diskNotes.workspaceManifest?.settings) {
+        await applyWorkspaceManifest(diskNotes.workspaceManifest)
+      } else {
+        await writeWorkspaceManifest(handle, createWorkspaceManifest())
+      }
     }
     hasPendingLocalImport = false
     await activateFirstAvailableNote({ createJournal: false })
@@ -657,6 +762,8 @@ export function useSecondMind() {
       if (handle && (await verifyPermission(handle, true))) {
         directoryHandle.value = handle
         workspaceName.value = handle.name
+        const manifest = await readWorkspaceManifest(handle)
+        await applyWorkspaceManifest(manifest)
         return true
       }
     } catch {
@@ -731,6 +838,10 @@ export function useSecondMind() {
   return {
     repository,
     notes,
+    workspaceSettings,
+    dailyTemplates,
+    activeDailyTemplateId,
+    activeDailyTemplate,
     journals,
     activeNote,
     activeNoteId,
@@ -759,6 +870,13 @@ export function useSecondMind() {
     addBlock,
     removeBlock,
     changeBlockType,
+    buildTemplateEditorNote,
+    ensurePrimaryDailyTemplate,
+    saveDailyTemplate,
+    saveDailyTemplateFromNote,
+    canApplyDailyTemplateToNote,
+    applyDailyTemplate,
+    createWorkspaceManifest,
     importFiles,
     importDirectory,
     connectWorkspace,

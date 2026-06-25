@@ -112,6 +112,23 @@ test('la interfaz permite recargar manualmente desde carpeta y evita llamar loca
   assert.match(app, /title="Recargar desde carpeta"/)
 })
 
+test('el workspace exporta e importa settings de plantillas mediante second-mind.json', async () => {
+  const [app, composable, storage] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/lib/storage.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /JSON\.stringify\(mind\.createWorkspaceManifest\(\), null, 2\)/)
+  assert.match(composable, /settings:\s*workspaceSettings\.value/)
+  assert.match(composable, /const dailyTemplates = computed/)
+  assert.match(composable, /const activeDailyTemplate = computed/)
+  assert.match(composable, /await writeWorkspaceManifest\(directoryHandle\.value, createWorkspaceManifest\(\)\)/)
+  assert.match(storage, /const WORKSPACE_MANIFEST = 'second-mind\.json'/)
+  assert.match(storage, /notes\.workspaceManifest = await readWorkspaceManifest\(root\)/)
+  assert.match(storage, /export async function writeWorkspaceManifest\(root, manifest\)/)
+})
+
 test('conectar carpeta e importar markdown viven en la barra superior, no en el lateral', async () => {
   const [app, styles] = await Promise.all([
     readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),

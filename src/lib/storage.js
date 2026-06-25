@@ -1,6 +1,7 @@
 const DB_NAME = 'second-mind-handles'
 const STORE_NAME = 'workspace'
 const HANDLE_KEY = 'directory'
+const WORKSPACE_MANIFEST = 'second-mind.json'
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -55,6 +56,7 @@ async function readMarkdownDirectory(directory, kind) {
 
 export async function readWorkspace(root) {
   const notes = []
+  notes.workspaceManifest = await readWorkspaceManifest(root)
   for (const kind of ['journals', 'contexts', 'tags']) {
     try {
       const directory = await root.getDirectoryHandle(kind)
@@ -86,6 +88,10 @@ export async function readMarkdownTree(root, prefix = '') {
       notes.push(...(await readMarkdownTree(handle, path)))
       continue
     }
+    if (!prefix && name === WORKSPACE_MANIFEST) {
+      notes.workspaceManifest = await readWorkspaceManifest(root)
+      continue
+    }
     if (!name.toLowerCase().endsWith('.md')) continue
     const file = await handle.getFile()
     notes.push({
@@ -108,6 +114,27 @@ export async function writeNote(root, note) {
   const handle = await directory.getFileHandle(note.filename, { create: true })
   const writable = await handle.createWritable()
   await writable.write(note.markdown)
+  await writable.close()
+}
+
+export async function readWorkspaceManifest(root) {
+  try {
+    const handle = await root.getFileHandle(WORKSPACE_MANIFEST)
+    const file = await handle.getFile()
+    return JSON.parse(await file.text())
+  } catch (error) {
+    if (error.name === 'NotFoundError') return null
+    if (error instanceof SyntaxError) {
+      throw new Error('El archivo second-mind.json no es un JSON válido.')
+    }
+    throw error
+  }
+}
+
+export async function writeWorkspaceManifest(root, manifest) {
+  const handle = await root.getFileHandle(WORKSPACE_MANIFEST, { create: true })
+  const writable = await handle.createWritable()
+  await writable.write(JSON.stringify(manifest, null, 2))
   await writable.close()
 }
 

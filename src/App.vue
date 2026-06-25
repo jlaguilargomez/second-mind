@@ -7,9 +7,11 @@ import CalendarPanel from './components/CalendarPanel.vue'
 import ReminderDialog from './components/ReminderDialog.vue'
 import RichText from './components/RichText.vue'
 import {
+  createBlock,
   formatReminderDate,
   DEFAULT_CONTEXT_TYPE,
   isoDate,
+  normalizeNote,
   reminderDate,
   serializeContextShare,
   serializeJournalShare,
@@ -31,6 +33,8 @@ const {
   loading,
   syncState,
   workspaceName,
+  dailyTemplates,
+  activeDailyTemplate,
   conflicts,
   allBlocks,
   tasks,
@@ -42,6 +46,7 @@ const {
 const searchQuery = ref('')
 const showSearch = ref(false)
 const showContextDialog = ref(false)
+const showTemplateDialog = ref(false)
 const showMobilePanel = ref(false)
 const newContextName = ref('')
 const newContextType = ref(DEFAULT_CONTEXT_TYPE)
@@ -58,6 +63,8 @@ const copyState = ref('idle')
 const isOnline = ref(navigator.onLine)
 const updateAvailable = ref(false)
 const tagDescriptionDraft = ref('')
+const templateDraftNote = ref(null)
+const templateNameDraft = ref('')
 const updateSW = registerSW({
   onNeedRefresh() {
     updateAvailable.value = true
@@ -235,6 +242,8 @@ const journalEntryCount = computed(() =>
   ).length || 0,
 )
 const journalContextCount = computed(() => activeNote.value?.contexts.length || 0)
+const canApplyDailyTemplate = computed(() => mind.canApplyDailyTemplateToNote(activeNote.value))
+const currentDailyTemplateName = computed(() => activeDailyTemplate.value?.name || 'Plantilla diaria')
 
 watch(
   activeTagProject,
@@ -353,6 +362,74 @@ function openDate(date) {
   showMobilePanel.value = false
 }
 
+function resetTemplateDraft() {
+  templateDraftNote.value = null
+  templateNameDraft.value = ''
+}
+
+async function openTemplateDialog() {
+  const template = await mind.ensurePrimaryDailyTemplate()
+  templateDraftNote.value = mind.buildTemplateEditorNote(template.id)
+  templateNameDraft.value = template.name
+  showTemplateDialog.value = true
+  showMobilePanel.value = false
+}
+
+function closeTemplateDialog() {
+  showTemplateDialog.value = false
+  resetTemplateDraft()
+}
+
+function updateTemplateDraft(blockId, patch) {
+  if (!templateDraftNote.value) return
+  const blocks = templateDraftNote.value.blocks.map((block) =>
+    block.id === blockId
+      ? { ...block, ...patch, updatedAt: new Date().toISOString() }
+      : block,
+  )
+  templateDraftNote.value = normalizeNote({ ...templateDraftNote.value, blocks, markdown: undefined })
+}
+
+function addTemplateDraftBlock(afterBlockId, type, content = '', options = {}) {
+  if (!templateDraftNote.value) return null
+  const blocks = [...templateDraftNote.value.blocks]
+  const index = blocks.findIndex((block) => block.id === afterBlockId)
+  blocks.splice(index < 0 ? blocks.length : index + 1, 0, { ...createBlock(type, content), ...options })
+  templateDraftNote.value = normalizeNote({ ...templateDraftNote.value, blocks, markdown: undefined })
+  return null
+}
+
+function removeTemplateDraftBlock(blockId) {
+  if (!templateDraftNote.value || templateDraftNote.value.blocks.length <= 1) return
+  templateDraftNote.value = normalizeNote({
+    ...templateDraftNote.value,
+    blocks: templateDraftNote.value.blocks.filter((block) => block.id !== blockId),
+    markdown: undefined,
+  })
+}
+
+function changeTemplateDraftType(blockId, type) {
+  updateTemplateDraft(blockId, {
+    type,
+    checked: type === 'task' ? false : undefined,
+    priority: type === 'task' ? 'base' : undefined,
+    level: type === 'heading' ? 2 : undefined,
+  })
+}
+
+async function saveTemplateDialog() {
+  if (!templateDraftNote.value) return
+  await mind.saveDailyTemplateFromNote(templateDraftNote.value.id, templateDraftNote.value, {
+    name: templateNameDraft.value.trim() || 'Plantilla diaria',
+  })
+  closeTemplateDialog()
+}
+
+async function applyDailyTemplate() {
+  if (!activeNote.value) return
+  await mind.applyDailyTemplate(activeNote.value.id)
+}
+
 function updateActiveBlock(blockId, patch) {
   mind.updateBlock(activeNote.value.id, blockId, patch)
 }
@@ -468,15 +545,7 @@ async function exportWorkspace() {
   }
   zip.file(
     'second-mind.json',
-    JSON.stringify(
-      {
-        exportedAt: new Date().toISOString(),
-        format: 'second-mind-v2',
-        noteCount: notes.value.length,
-      },
-      null,
-      2,
-    ),
+    JSON.stringify(mind.createWorkspaceManifest(), null, 2),
   )
   const blob = await zip.generateAsync({ type: 'blob' })
   const url = URL.createObjectURL(blob)
@@ -504,6 +573,7 @@ function handleShortcuts(event) {
   if (event.key === 'Escape') {
     showSearch.value = false
     showContextDialog.value = false
+    if (showTemplateDialog.value) closeTemplateDialog()
     showMobilePanel.value = false
     reminderBlock.value = null
   }
@@ -664,6 +734,12 @@ onBeforeUnmount(() => {
           >♢</button>
           <button
             class="icon-button"
+            aria-label="Editar plantilla diaria"
+            title="Editar plantilla diaria"
+            @click="openTemplateDialog"
+          >▤</button>
+          <button
+            class="icon-button"
             aria-label="Conectar carpeta local"
             title="Conectar carpeta local"
             @click="chooseWorkspace"
@@ -710,6 +786,12 @@ onBeforeUnmount(() => {
                 {{ pluralize(journalEntryCount, 'entrada') }} ·
                 {{ pluralize(journalContextCount, 'contexto') }}
               </p>
+              <div v-if="canApplyDailyTemplate" class="page-heading-actions">
+                <button class="primary-button" @click="applyDailyTemplate">
+                  Usar plantilla
+                </button>
+                <small>{{ currentDailyTemplateName }}</small>
+              </div>
             </div>
             <BlockEditor
               :note="activeNote"
@@ -1280,6 +1362,44 @@ onBeforeUnmount(() => {
           <button class="primary-button">Crear @camino</button>
         </div>
       </form>
+    </div>
+
+    <div v-if="showTemplateDialog" class="modal-backdrop template-modal-backdrop" @click.self="closeTemplateDialog">
+      <div class="search-modal template-modal">
+        <div class="template-modal-header">
+          <div>
+            <p class="eyebrow">PLANTILLA DIARIA</p>
+            <h2>Base personal para los días nuevos</h2>
+          </div>
+          <button type="button" class="secondary-button" @click="closeTemplateDialog">Cerrar</button>
+        </div>
+        <div class="template-modal-body">
+          <label>
+            Nombre visible
+            <input v-model="templateNameDraft" maxlength="60" placeholder="Plantilla diaria" />
+          </label>
+          <p class="template-modal-copy">
+            Esta versión admite una plantilla activa, pero queda preparada para que más adelante puedas guardar varias.
+          </p>
+          <BlockEditor
+            v-if="templateDraftNote"
+            :note="templateDraftNote"
+            :contexts="contextIndex"
+            :tags="tags"
+            @update-block="updateTemplateDraft"
+            @add-block="addTemplateDraftBlock"
+            @remove-block="removeTemplateDraftBlock"
+            @change-type="changeTemplateDraftType"
+          />
+        </div>
+        <div class="template-modal-footer">
+          <small>{{ pluralize(dailyTemplates.length, 'plantilla') }} configurada</small>
+          <div>
+            <button type="button" class="secondary-button" @click="closeTemplateDialog">Cancelar</button>
+            <button type="button" class="primary-button" @click="saveTemplateDialog">Guardar plantilla</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <ReminderDialog
