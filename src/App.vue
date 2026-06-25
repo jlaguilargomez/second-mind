@@ -65,6 +65,7 @@ const updateAvailable = ref(false)
 const tagDescriptionDraft = ref('')
 const templateDraftNote = ref(null)
 const templateNameDraft = ref('')
+const contextRenameDraft = ref('')
 const updateSW = registerSW({
   onNeedRefresh() {
     updateAvailable.value = true
@@ -249,6 +250,14 @@ watch(
   activeTagProject,
   (tag) => {
     tagDescriptionDraft.value = tag?.description || ''
+  },
+  { immediate: true },
+)
+
+watch(
+  activeContext,
+  (context) => {
+    contextRenameDraft.value = context?.name || ''
   },
   { immediate: true },
 )
@@ -476,6 +485,32 @@ async function deleteContext(name) {
     : ''
   if (!window.confirm(`¿Eliminar @${name}?${detail} Esta acción no se puede deshacer.`)) return
   await mind.deleteContext(name)
+}
+
+async function saveContextRename() {
+  if (!activeContext.value) return
+  const currentName = activeContext.value.name
+  const nextName = contextRenameDraft.value.trim()
+  if (!nextName) {
+    contextRenameDraft.value = currentName
+    return
+  }
+
+  const currentKey = currentName.toLocaleLowerCase()
+  const nextKey = nextName.toLocaleLowerCase()
+  const mergeTarget = nextKey !== currentKey ? mind.getContext(nextName) : null
+  if (mergeTarget) {
+    const detail = mergeTarget.count
+      ? ` El contexto final conservará @${mergeTarget.name} y reunirá también sus ${pluralize(mergeTarget.count, 'mención', 'menciones')}.`
+      : ''
+    if (!window.confirm(`@${currentName} se fusionará en @${mergeTarget.name}.${detail}`)) {
+      contextRenameDraft.value = currentName
+      return
+    }
+  }
+
+  await mind.renameContext(currentName, nextName)
+  contextRenameDraft.value = nextName
 }
 
 async function deleteTag(name) {
@@ -1175,6 +1210,18 @@ onBeforeUnmount(() => {
                 <p class="eyebrow">CONTEXTO</p>
                 <h1>@{{ activeContext.name }}</h1>
                 <p>{{ activeContext.count }} menciones · {{ activeContext.openTasks }} tareas abiertas</p>
+                <label class="context-rename-control">
+                  Nombre
+                  <input
+                    v-model="contextRenameDraft"
+                    aria-label="Renombrar contexto"
+                    placeholder="@equipo"
+                    @keydown.enter.prevent="saveContextRename"
+                  />
+                  <button class="context-action-button" @click="saveContextRename">
+                    Renombrar contexto
+                  </button>
+                </label>
                 <label class="context-type-control">
                   Tipo
                   <select

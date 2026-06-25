@@ -545,18 +545,28 @@ kbd {
   line-height: 1.45;
 }
 .tag-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.context-type-control, .tag-note-control {
+.context-type-control, .tag-note-control, .context-rename-control {
   display: flex; align-items: center; gap: 7px; margin-top: 12px; color: #74736c; font-size: 11px;
 }
 .context-type-control select,
-.tag-note-control input {
+.tag-note-control input,
+.context-rename-control input {
   border: 1px solid rgba(0,0,0,.1); border-radius: 6px; padding: 5px 8px; background: rgba(255,255,255,.5); font-size: 11px;
 }
-.tag-note-control { flex-wrap: wrap; }
-.tag-note-control input { min-width: min(320px, 100%); color: var(--ink); }
+.tag-note-control, .context-rename-control { flex-wrap: wrap; }
+.tag-note-control input, .context-rename-control input { min-width: min(320px, 100%); color: var(--ink); }
 .tag-note-control small { color: #8d88ae; font-family: var(--font-mono); }
-.delete-context-button {
+.context-action-button, .delete-context-button {
   margin-top: 10px; border: 0; border-radius: 6px; padding: 5px 8px;
+  background: rgba(255,255,255,.38); font-size: 10px;
+}
+.context-action-button {
+  color: #41685c;
+}
+.context-action-button:hover {
+  background: rgba(255,255,255,.68);
+}
+.delete-context-button {
   color: #8b4d47; background: rgba(255,255,255,.38); font-size: 10px;
 }
 .delete-context-button:hover { background: #f2dfdd; }

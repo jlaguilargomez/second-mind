@@ -13,6 +13,7 @@ import {
   projectContextBlocks,
   reminderDate,
   reminderState,
+  replaceContextReference,
   removeContextReference,
   removeTagReference,
   serializeNote,
@@ -316,11 +317,24 @@ export function useSecondMind() {
     return { saved, expectedVersion: expectedVersion ?? 0 }
   }
 
-  async function savePreparedNote(saved, expectedVersion) {
+  async function savePreparedNote(saved, expectedVersion, options = {}) {
     syncState.value = directoryHandle.value ? 'Guardando en carpeta…' : 'Guardando local…'
     try {
       await repository.saveNote(saved, { expectedVersion })
-      if (directoryHandle.value) await writeNote(directoryHandle.value, saved)
+      if (directoryHandle.value) {
+        await writeNote(directoryHandle.value, saved)
+        if (
+          options.removeStaleFile &&
+          options.removeStaleFile.filename &&
+          options.removeStaleFile.filename !== saved.filename
+        ) {
+          try {
+            await removeNote(directoryHandle.value, options.removeStaleFile)
+          } catch (error) {
+            if (error.name !== 'NotFoundError') throw error
+          }
+        }
+      }
       syncState.value = settledSyncState()
     } catch (error) {
       if (error.name === 'VersionConflictError') {
@@ -476,6 +490,93 @@ export function useSecondMind() {
     replaceNotes(prepared.map(({ saved }) => saved))
     for (const { saved, expectedVersion } of prepared) {
       await savePreparedNote(saved, expectedVersion)
+    }
+  }
+
+  async function renameContext(oldName, newName) {
+    const sourceName = oldName.trim()
+    const targetName = newName.trim()
+    if (!sourceName || !targetName || sourceName === targetName) return
+
+    const sourceKey = sourceName.toLocaleLowerCase()
+    const targetKey = targetName.toLocaleLowerCase()
+    const sourceNote = contextNotes.value.find(
+      (note) => note.title.toLocaleLowerCase() === sourceKey,
+    )
+    const targetNote = contextNotes.value.find(
+      (note) => note.title.toLocaleLowerCase() === targetKey,
+    )
+    const mergeTargetNote = targetNote && targetNote.id !== sourceNote?.id ? targetNote : null
+    const excludedNoteId = mergeTargetNote ? sourceNote?.id : null
+
+    if (sourceNote) {
+      clearTimeout(saveTimers.get(sourceNote.id))
+      saveTimers.delete(sourceNote.id)
+    }
+    if (mergeTargetNote) {
+      clearTimeout(saveTimers.get(mergeTargetNote.id))
+      saveTimers.delete(mergeTargetNote.id)
+    }
+
+    const affected = notes.value
+      .filter((note) => note.id !== excludedNoteId)
+      .map((note) => {
+        const blocks = note.blocks.map((block) => ({
+          ...block,
+          content: replaceContextReference(block.content, sourceName, targetName),
+        }))
+        const changed = blocks.some((block, index) => block.content !== note.blocks[index].content)
+        if (!changed) return null
+        return normalizeNote({ ...note, blocks, markdown: undefined })
+      })
+      .filter(Boolean)
+
+    let staleFileNote = null
+    if (sourceNote && !mergeTargetNote) {
+      const renamedBlocks = sourceNote.blocks.map((block, index) => {
+        if (index === 0 && block.type === 'heading' && block.level === 1) {
+          return { ...block, content: targetName }
+        }
+        return block
+      })
+      const renamedNote = normalizeNote({
+        ...sourceNote,
+        title: targetName,
+        filename: `${contextSlug(targetName) || 'contexto'}.md`,
+        blocks: renamedBlocks,
+        markdown: undefined,
+      })
+      staleFileNote = sourceNote
+      const existingIndex = affected.findIndex((note) => note.id === renamedNote.id)
+      if (existingIndex >= 0) affected.splice(existingIndex, 1, renamedNote)
+      else affected.push(renamedNote)
+    }
+
+    const prepared = affected.map((note) => prepareNoteForSave(note, note.version))
+    replaceNotes(prepared.map(({ saved }) => saved))
+    for (const { saved, expectedVersion } of prepared) {
+      await savePreparedNote(saved, expectedVersion, {
+        removeStaleFile: staleFileNote?.id === saved.id ? staleFileNote : null,
+      })
+    }
+
+    if (mergeTargetNote && sourceNote) {
+      await repository.deleteNote(sourceNote.id)
+      if (directoryHandle.value) {
+        try {
+          await removeNote(directoryHandle.value, sourceNote)
+        } catch (error) {
+          if (error.name !== 'NotFoundError') throw error
+        }
+      }
+      notes.value = notes.value.filter((note) => note.id !== sourceNote.id)
+    }
+
+    const finalNote = mergeTargetNote || sourceNote
+    if (selectedContext.value?.toLocaleLowerCase() === sourceKey) {
+      selectedContext.value = targetName
+      currentView.value = 'context'
+      if (finalNote?.id) activeNoteId.value = finalNote.id
     }
   }
 
@@ -863,6 +964,7 @@ export function useSecondMind() {
     setView,
     openContext,
     updateContext,
+    renameContext,
     updateTag,
     deleteContext,
     deleteTag,

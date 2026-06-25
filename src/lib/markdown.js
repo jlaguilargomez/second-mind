@@ -85,6 +85,22 @@ export function removeContextReference(content = '', name = '') {
     )
 }
 
+export function replaceContextReference(content = '', name = '', nextName = '') {
+  const key = name.trim().toLocaleLowerCase()
+  const replacement = nextName.trim()
+  if (!key || !replacement) return content
+
+  return content
+    .replace(
+      /(^|[\s(])@([\p{L}\p{N}_/-]+)/gu,
+      (match, prefix, value) => value.toLocaleLowerCase() === key ? `${prefix}@${replacement}` : match,
+    )
+    .replace(
+      /\[\[([^\]\n]+)\]\]/g,
+      (match, value) => value.trim().toLocaleLowerCase() === key ? `[[${replacement}]]` : match,
+    )
+}
+
 export function removeTagReference(content = '', name = '') {
   const key = name.trim().toLocaleLowerCase()
   if (!key) return content
