@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import RichText from './RichText.vue'
 import { formatReminderDate } from '../lib/markdown'
+import { getCaptureShortcut } from '../lib/editorShortcuts'
 
 const props = defineProps({
   note: { type: Object, required: true },
@@ -121,6 +122,21 @@ function changeType(block, type) {
   focusBlock(block.id)
 }
 
+function applyBlockShortcut(block, shortcut) {
+  emit('change-type', block.id, shortcut.type)
+  emit('update-block', block.id, {
+    content: shortcut.content,
+    ...shortcut.patch,
+  })
+  if (isMobileViewport.value) mobileToolbarBlockId.value = null
+  activeSuggestion.value = null
+  nextTick(() => {
+    const input = inputRefs.get(block.id)
+    input?.focus()
+    if (input) input.setSelectionRange(0, 0)
+  })
+}
+
 function cyclePriority(block) {
   const priorities = ['base', 'medium', 'high']
   const currentIndex = priorities.indexOf(block.priority || 'base')
@@ -168,6 +184,13 @@ function handleKeydown(block, index, event) {
   const suggestion = activeSuggestion.value?.blockId === block.id
     ? activeSuggestion.value
     : null
+  const shortcut = getCaptureShortcut({
+    key: event.key,
+    value: event.target.value,
+    selectionStart: event.target.selectionStart,
+    selectionEnd: event.target.selectionEnd,
+    hasSuggestion: Boolean(suggestion),
+  })
 
   if (suggestion && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
     event.preventDefault()
@@ -190,6 +213,11 @@ function handleKeydown(block, index, event) {
   }
   if (event.key === 'Escape') {
     activeSuggestion.value = null
+    return
+  }
+  if (shortcut) {
+    event.preventDefault()
+    applyBlockShortcut(block, shortcut)
     return
   }
   if (event.key === 'Tab' && indentableTypes.has(block.type)) {
@@ -521,7 +549,7 @@ onBeforeUnmount(() => {
     >
       <span>＋</span>
       <strong>Añadir entrada</strong>
-      <small>o pulsa Intro al escribir</small>
+      <small>Intro para seguir · + tarea · &gt; título</small>
     </button>
   </div>
 </template>

@@ -14,7 +14,7 @@ test('el editor expone tipos de bloque y una acción clara para añadir entradas
   assert.doesNotMatch(editor, /\{ value: 'text',/)
   assert.match(editor, /class="add-entry-button"/)
   assert.match(editor, /Añadir entrada/)
-  assert.match(editor, /o pulsa Intro al escribir/)
+  assert.match(editor, /Intro para seguir · \+ tarea · &gt; título/)
 })
 
 test('las tareas cambian prioridad con un único control contextual', async () => {
@@ -67,6 +67,21 @@ test('el autocompletado se puede recorrer y aceptar sin abandonar el teclado', a
   assert.match(editor, /activeSuggestionIndex/)
   assert.match(editor, /suggestion\.type === 'context' && suggestion\.query/)
   assert.match(editor, /setSelectionRange\(cursor, cursor\)/)
+})
+
+test('los prefijos de captura convierten el bloque sin interferir con el resto del teclado', async () => {
+  const editor = await readFile(
+    new URL('../src/components/BlockEditor.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(editor, /import \{ getCaptureShortcut \} from '\.\.\/lib\/editorShortcuts'/)
+  assert.match(editor, /function applyBlockShortcut\(block, shortcut\)/)
+  assert.match(editor, /emit\('change-type', block\.id, shortcut\.type\)/)
+  assert.match(editor, /content: shortcut\.content/)
+  assert.match(editor, /const shortcut = getCaptureShortcut\(\{/)
+  assert.match(editor, /if \(shortcut\) \{/)
+  assert.match(editor, /input\) input\.setSelectionRange\(0, 0\)/)
 })
 
 test('el título canónico de la nota no deja controles huérfanos en el editor', async () => {
