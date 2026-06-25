@@ -454,6 +454,14 @@ kbd {
 .agenda-item > button { border: 0; background: transparent; text-align: left; font-family: var(--font-editor); font-size: 17px; }
 
 .project-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.context-groups {
+  display: grid;
+  gap: 28px;
+}
+.context-group {
+  display: grid;
+  gap: 14px;
+}
 .entity-directory {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

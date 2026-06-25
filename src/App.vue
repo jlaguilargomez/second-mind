@@ -220,6 +220,18 @@ const supportContexts = computed(() =>
     ['team', 'area'].includes(context.contextType || DEFAULT_CONTEXT_TYPE),
   ),
 )
+const contextTypeOrder = ['project', 'area', 'team', 'person']
+const groupedContexts = computed(() =>
+  contextTypeOrder
+    .map((type) => ({
+      type,
+      label: contextTypes[type],
+      contexts: contextIndex.value.filter(
+        (context) => (context.contextType || DEFAULT_CONTEXT_TYPE) === type,
+      ),
+    }))
+    .filter((group) => group.contexts.length),
+)
 const peopleContexts = computed(() =>
   contextIndex.value.filter((context) => context.contextType === 'person'),
 )
@@ -1029,19 +1041,31 @@ onBeforeUnmount(() => {
               <p>{{ pluralize(contextIndex.length, 'contexto') }} conectados con notas, tareas y actividad.</p>
             </div>
 
-            <div v-if="contextIndex.length" class="entity-directory context-directory">
-              <button
-                v-for="context in contextIndex"
-                :key="context.name"
-                :class="`context-${context.color || 'sage'}`"
-                @click="openContext(context.name)"
+            <div v-if="contextIndex.length" class="context-groups">
+              <section
+                v-for="group in groupedContexts"
+                :key="group.type"
+                class="context-group"
               >
-                <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
-                <span>
-                  <strong>@{{ context.name }}</strong>
-                  <small>{{ contextTypes[context.contextType || DEFAULT_CONTEXT_TYPE] }} · {{ context.openTasks }} abiertas · {{ context.count }} menciones</small>
-                </span>
-              </button>
+                <div class="section-title">
+                  <h2>{{ group.label }}</h2>
+                  <span>{{ group.contexts.length }}</span>
+                </div>
+                <div class="entity-directory context-directory">
+                  <button
+                    v-for="context in group.contexts"
+                    :key="context.name"
+                    :class="`context-${context.color || 'sage'}`"
+                    @click="openContext(context.name)"
+                  >
+                    <b :class="`context-dot color-${context.color || 'sage'}`">{{ context.emoji || '◈' }}</b>
+                    <span>
+                      <strong>@{{ context.name }}</strong>
+                      <small>{{ contextTypes[context.contextType || DEFAULT_CONTEXT_TYPE] }} · {{ context.openTasks }} abiertas · {{ context.count }} menciones</small>
+                    </span>
+                  </button>
+                </div>
+              </section>
             </div>
             <div v-else class="empty-state">Aún no hay contextos.</div>
           </template>

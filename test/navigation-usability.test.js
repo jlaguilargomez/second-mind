@@ -183,6 +183,25 @@ test('contextos y etiquetas tienen vistas completas desde la navegación lateral
   assert.match(styles, /\.tag-directory/)
 })
 
+test('la vista de contextos agrupa por tipo manteniendo el fallback por defecto', async () => {
+  const [app, styles] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /const contextTypeOrder = \['project', 'area', 'team', 'person'\]/)
+  assert.match(app, /const groupedContexts = computed\(/)
+  assert.match(app, /\(context\.contextType \|\| DEFAULT_CONTEXT_TYPE\) === type/)
+  assert.match(app, /v-for="group in groupedContexts"/)
+  assert.match(app, /class="context-group"/)
+  assert.match(app, /<h2>\{\{ group\.label \}\}<\/h2>/)
+  assert.match(app, /group\.contexts\.length/)
+  assert.match(app, /<div v-if="contextIndex\.length" class="context-groups">/)
+  assert.match(app, /v-for="context in group\.contexts"/)
+  assert.match(styles, /\.context-groups/)
+  assert.match(styles, /\.context-group/)
+})
+
 test('la interfaz móvil usa iconos legibles y objetivos táctiles amplios', async () => {
   const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
 
