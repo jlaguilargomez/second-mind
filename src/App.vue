@@ -33,6 +33,7 @@ const {
   loading,
   syncState,
   workspaceName,
+  theme,
   dailyTemplates,
   activeDailyTemplate,
   conflicts,
@@ -257,6 +258,17 @@ const journalEntryCount = computed(() =>
 const journalContextCount = computed(() => activeNote.value?.contexts.length || 0)
 const canApplyDailyTemplate = computed(() => mind.canApplyDailyTemplateToNote(activeNote.value))
 const currentDailyTemplateName = computed(() => activeDailyTemplate.value?.name || 'Plantilla diaria')
+const themeToggleLabel = computed(() =>
+  theme.value === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
+)
+
+watch(
+  theme,
+  (value) => {
+    document.documentElement.dataset.theme = value
+  },
+  { immediate: true },
+)
 
 watch(
   activeTagProject,
@@ -773,6 +785,14 @@ onBeforeUnmount(() => {
         </div>
         <div class="top-actions">
           <span class="save-state">{{ syncState }}</span>
+          <button
+            class="icon-button theme-toggle-button"
+            :aria-label="themeToggleLabel"
+            :title="themeToggleLabel"
+            @click="mind.toggleTheme()"
+          >
+            {{ theme === 'dark' ? '☼' : '◐' }}
+          </button>
           <button
             class="icon-button"
             aria-label="Activar notificaciones"

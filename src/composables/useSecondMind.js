@@ -44,6 +44,7 @@ import {
 } from '../lib/storage'
 
 const LEGACY_LOCAL_KEY = 'second-mind-notes-v1'
+const THEME_PREFERENCE_KEY = 'second-mind-theme'
 const contextPalette = ['sage', 'blue', 'amber', 'violet', 'rose']
 const contextEmojis = ['◈', '●', '◆', '✦', '⬡']
 export const contextTypes = {
@@ -123,6 +124,7 @@ export function useSecondMind() {
   const dailyTemplates = computed(() => workspaceSettings.value.dailyTemplates || [])
   const activeDailyTemplateId = computed(() => workspaceSettings.value.activeDailyTemplateId || null)
   const activeDailyTemplate = computed(() => resolveActiveDailyTemplate(workspaceSettings.value))
+  const theme = computed(() => workspaceSettings.value.theme === 'light' ? 'light' : 'dark')
   const journals = computed(() =>
     notes.value
       .filter((note) => note.kind === 'journal')
@@ -231,11 +233,16 @@ export function useSecondMind() {
 
   async function loadSavedSettings() {
     const stored = await repository.getSetting(WORKSPACE_SETTINGS_KEY)
-    workspaceSettings.value = normalizeWorkspaceSettings(stored?.value || stored || {})
+    const storedTheme = localStorage.getItem(THEME_PREFERENCE_KEY)
+    workspaceSettings.value = normalizeWorkspaceSettings({
+      ...(stored?.value || stored || {}),
+      theme: storedTheme === 'light' ? 'light' : storedTheme === 'dark' ? 'dark' : stored?.value?.theme,
+    })
   }
 
   async function persistWorkspaceSettings() {
     workspaceSettings.value = normalizeWorkspaceSettings(workspaceSettings.value)
+    localStorage.setItem(THEME_PREFERENCE_KEY, workspaceSettings.value.theme)
     await repository.setSetting(WORKSPACE_SETTINGS_KEY, workspaceSettings.value)
     if (directoryHandle.value) {
       await writeWorkspaceManifest(directoryHandle.value, createWorkspaceManifest())
@@ -243,8 +250,24 @@ export function useSecondMind() {
   }
 
   async function applyWorkspaceManifest(manifest = null) {
-    workspaceSettings.value = normalizeWorkspaceSettings(manifest?.settings || {})
+    workspaceSettings.value = normalizeWorkspaceSettings({
+      ...workspaceSettings.value,
+      ...(manifest?.settings || {}),
+    })
+    localStorage.setItem(THEME_PREFERENCE_KEY, workspaceSettings.value.theme)
     await repository.setSetting(WORKSPACE_SETTINGS_KEY, workspaceSettings.value)
+  }
+
+  async function setTheme(nextTheme) {
+    workspaceSettings.value = normalizeWorkspaceSettings({
+      ...workspaceSettings.value,
+      theme: nextTheme === 'light' ? 'light' : 'dark',
+    })
+    await persistWorkspaceSettings()
+  }
+
+  async function toggleTheme() {
+    await setTheme(theme.value === 'dark' ? 'light' : 'dark')
   }
 
   async function initialize() {
@@ -943,6 +966,7 @@ export function useSecondMind() {
     dailyTemplates,
     activeDailyTemplateId,
     activeDailyTemplate,
+    theme,
     journals,
     activeNote,
     activeNoteId,
@@ -978,6 +1002,8 @@ export function useSecondMind() {
     saveDailyTemplateFromNote,
     canApplyDailyTemplateToNote,
     applyDailyTemplate,
+    setTheme,
+    toggleTheme,
     createWorkspaceManifest,
     importFiles,
     importDirectory,
