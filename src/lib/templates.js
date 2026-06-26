@@ -10,6 +10,7 @@ export function createDefaultWorkspaceSettings() {
   return {
     dailyTemplates: [],
     activeDailyTemplateId: null,
+    theme: 'dark',
   }
 }
 
@@ -54,6 +55,7 @@ export function normalizeWorkspaceSettings(settings = {}) {
     || dailyTemplates.find((template) => template.isDefault)?.id
     || dailyTemplates[0]?.id
     || null
+  const theme = settings.theme === 'light' ? 'light' : 'dark'
 
   return {
     dailyTemplates: dailyTemplates.map((template) => ({
@@ -61,6 +63,7 @@ export function normalizeWorkspaceSettings(settings = {}) {
       isDefault: template.id === activeDailyTemplateId,
     })),
     activeDailyTemplateId,
+    theme,
   }
 }
 
