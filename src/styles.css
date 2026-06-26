@@ -145,8 +145,8 @@ kbd {
 }
 .sidebar-entity-row { display: flex; align-items: center; border-radius: 10px; }
 .sidebar-entity-row.active {
-  background: rgba(119,196,255,.12);
-  box-shadow: inset 0 0 0 1px rgba(119,196,255,.14);
+  background: linear-gradient(135deg, rgba(119,196,255,.18), rgba(165,139,255,.14));
+  box-shadow: inset 0 0 0 1px rgba(119,196,255,.2);
 }
 .sidebar-entity-row .context-link, .sidebar-entity-row .tag-link { min-width: 0; }
 .delete-entity-button {
@@ -159,9 +159,9 @@ kbd {
 .delete-entity-button:hover { background: var(--rose-soft); }
 .primary-nav button:hover, .primary-nav button.active, .context-link:hover,
 .context-link.active, .tag-link:hover, .tag-link.active {
-  background: linear-gradient(135deg, rgba(119,196,255,.16), rgba(165,139,255,.12));
+  background: linear-gradient(135deg, rgba(119,196,255,.2), rgba(165,139,255,.16));
   color: var(--ink);
-  box-shadow: inset 0 0 0 1px rgba(119,196,255,.16);
+  box-shadow: inset 0 0 0 1px rgba(119,196,255,.22);
 }
 .primary-nav button > span { width: 18px; color: #706760; font-size: 16px; text-align: center; }
 .primary-nav small, .context-link small, .tag-link small { margin-left: auto; color: var(--muted); font-size: 10px; }
@@ -203,12 +203,13 @@ kbd {
 .context-dot {
   width: 19px; height: 19px; display: grid; place-items: center; flex: 0 0 auto;
   margin-right: 8px; border-radius: 7px; font-size: 11px; font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
 }
-.color-sage { color: var(--green); background: var(--green-soft); }
+.color-sage { color: #92ffd8; background: rgba(77,212,172,.22); }
 .color-blue { color: var(--blue); background: var(--blue-soft); }
 .color-amber { color: var(--amber); background: var(--amber-soft); }
-.color-violet { color: var(--violet); background: var(--violet-soft); }
-.color-rose { color: var(--rose); background: var(--rose-soft); }
+.color-violet { color: #dfd3ff; background: rgba(165,139,255,.22); }
+.color-rose { color: #ffd2d7; background: rgba(255,143,157,.2); }
 .tag-link { padding-block: 6px; }
 .tag-link span { color: var(--violet); }
 .sidebar-footer {
@@ -347,15 +348,15 @@ kbd {
   border: 0; border-radius: 6px; padding: 2px 5px; background: transparent; font-size: 9px;
 }
 .metadata-context, .inline-context {
-  color: #315b50; background: transparent !important; padding: 0 2px;
+  color: #8dffd7; background: rgba(77,212,172,.08) !important; padding: 0 4px;
   font: inherit; font-weight: 700; text-decoration: underline;
-  text-decoration-color: #9bb5ac; text-decoration-thickness: 1px; text-underline-offset: 4px;
+  text-decoration-color: rgba(141,255,215,.58); text-decoration-thickness: 1px; text-underline-offset: 4px;
 }
 .metadata-tag, .inline-tag {
-  color: #c4b7ff; background: transparent !important; padding: 0 2px;
+  color: #d6caff; background: rgba(165,139,255,.08) !important; padding: 0 4px;
   font: inherit; font-weight: 600;
 }
-.inline-context:hover, .inline-tag:hover { background: rgba(119,196,255,.1) !important; border-radius: 4px; }
+.inline-context:hover, .inline-tag:hover { background: rgba(119,196,255,.14) !important; border-radius: 6px; }
 .metadata-reminder { color: var(--amber); font-family: var(--font-mono); font-size: 10px; }
 .priority-badge {
   display: inline-flex; align-items: center; gap: 3px; width: fit-content;
@@ -570,7 +571,11 @@ kbd {
   background: linear-gradient(180deg, rgba(19,30,44,.72), rgba(13,21,32,.82)); text-align: left; box-shadow: var(--shadow-soft);
 }
 .entity-directory > button:hover,
-.entity-directory > button.active { border-color: rgba(119,196,255,.24); background: linear-gradient(180deg, rgba(24,38,56,.84), rgba(16,26,40,.92)); }
+.entity-directory > button.active {
+  border-color: rgba(119,196,255,.3);
+  background: linear-gradient(180deg, rgba(24,38,56,.9), rgba(16,26,40,.98));
+  box-shadow: inset 0 0 0 1px rgba(119,196,255,.14), 0 16px 34px rgba(2,8,18,.24);
+}
 .entity-directory span { min-width: 0; }
 .entity-directory strong, .entity-directory small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .entity-directory strong { color: var(--ink); font-size: 13px; }
@@ -683,11 +688,11 @@ kbd {
   color: #ffd2d7; background: rgba(255,255,255,.06); font-size: 10px;
 }
 .delete-context-button:hover { background: var(--rose-soft); }
-.context-sage { background: var(--green-soft); }
-.context-violet { background: var(--violet-soft); }
-.context-blue { background: var(--blue-soft); }
-.context-amber { background: var(--amber-soft); }
-.context-rose { background: var(--rose-soft); }
+.context-sage { background: linear-gradient(135deg, rgba(34,76,63,.88), rgba(15,52,43,.94)); }
+.context-violet { background: linear-gradient(135deg, rgba(70,60,110,.84), rgba(37,31,63,.94)); }
+.context-blue { background: linear-gradient(135deg, rgba(35,77,110,.86), rgba(18,47,71,.94)); }
+.context-amber { background: linear-gradient(135deg, rgba(99,66,29,.86), rgba(63,39,14,.94)); }
+.context-rose { background: linear-gradient(135deg, rgba(103,49,57,.86), rgba(63,24,29,.94)); }
 .context-section { margin-bottom: 38px; }
 .context-section .task-card:first-of-type { margin-top: 8px; }
 .activity-timeline { border-left: 1px solid rgba(120, 157, 196, .18); margin: 18px 0 0 10px; padding-left: 22px; }
@@ -735,25 +740,41 @@ kbd {
   position: relative; height: 36px; border: 0; border-radius: 10px; background: transparent; font-size: 11px;
 }
 .calendar-grid button:hover { background: rgba(119,196,255,.1); }
-.calendar-grid button.muted { color: #bbb7ae; }
-.calendar-grid button.selected { color: white; background: var(--ink); }
-.calendar-grid button.today:not(.selected) { box-shadow: inset 0 0 0 1px var(--green); }
+.calendar-grid button.muted { color: #6f8499; }
+.calendar-grid button.selected {
+  color: #081018;
+  background: linear-gradient(135deg, #dff1ff 0%, #b9d9ff 100%);
+  box-shadow: 0 8px 18px rgba(119,196,255,.18), inset 0 0 0 1px rgba(255,255,255,.55);
+  font-weight: 700;
+}
+.calendar-grid button.today:not(.selected) {
+  color: #e8fff7;
+  background: rgba(77,212,172,.12);
+  box-shadow: inset 0 0 0 1px rgba(77,212,172,.42);
+}
 .calendar-grid button.has-note::after {
   content: ''; position: absolute; bottom: 3px; left: calc(50% - 1.5px); width: 3px; height: 3px; border-radius: 50%; background: var(--green);
 }
-.calendar-grid button.selected::after { background: white; }
+.calendar-grid button.selected::after { background: #24618c; }
 .calendar-grid button i {
   position: absolute; top: 1px; right: 1px; min-width: 11px; height: 11px; padding: 0 2px;
   border-radius: 6px; color: white; background: var(--amber); font-size: 6px; font-style: normal; line-height: 11px;
 }
 .right-section { padding: 24px 2px; border-bottom: 1px solid rgba(120, 157, 196, .14); }
 .upcoming-link { display: grid; grid-template-columns: 42px 1fr; gap: 8px; width: 100%; border: 0; padding: 8px 5px; background: transparent; text-align: left; }
-.upcoming-link:hover { background: rgba(119,196,255,.1); border-radius: 10px; }
+.upcoming-link:hover {
+  background: linear-gradient(135deg, rgba(119,196,255,.1), rgba(165,139,255,.08));
+  border-radius: 10px;
+}
 .upcoming-link time { color: var(--amber); font-family: var(--font-mono); font-size: 10px; }
-.upcoming-link span { overflow: hidden; color: var(--muted-strong); font-family: var(--font-ui); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.upcoming-link span { overflow: hidden; color: #d6e5f3; font-family: var(--font-ui); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
 .empty-copy { color: var(--muted); font-family: var(--font-ui); font-size: 13px; line-height: 1.6; }
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 5px; }
-.tag-cloud button { border: 0; border-radius: 999px; padding: 7px 9px; color: #d4c8ff; background: rgba(165,139,255,.14); font-size: 10px; }
+.tag-cloud button {
+  border: 0; border-radius: 999px; padding: 7px 9px; color: #e0d7ff; background: rgba(165,139,255,.18);
+  box-shadow: inset 0 0 0 1px rgba(165,139,255,.16);
+  font-size: 10px;
+}
 .tag-cloud small { color: #9590bf; }
 .stats-list { margin: 0; font-size: 11px; }
 .stats-list div { display: flex; justify-content: space-between; margin-bottom: 8px; }
