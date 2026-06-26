@@ -90,6 +90,23 @@ button { color: inherit; }
 button, select { cursor: pointer; }
 button, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 button:focus, input:focus, textarea:focus, select:focus, [tabindex]:focus { outline: none; }
+input, textarea, select { color: var(--ink); }
+select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #a9c4db 50%),
+    linear-gradient(135deg, #a9c4db 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 1px),
+    calc(100% - 12px) calc(50% - 1px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+option, optgroup {
+  color: #112030;
+  background: #e9f3fb;
+}
 :where(button, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid #6f9185;
   outline-offset: 2px;
@@ -264,8 +281,8 @@ kbd {
 .right-panel {
   padding: 30px 23px;
   background:
-    radial-gradient(circle at top, rgba(119,196,255,.08), rgba(119,196,255,0) 30%),
-    linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0) 22%),
+    radial-gradient(circle at top, rgba(119,196,255,.1), rgba(119,196,255,0) 30%),
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02) 22%, rgba(255,255,255,0) 52%),
     var(--paper-deep);
   border-left: 1px solid rgba(120, 157, 196, .12);
 }
@@ -480,7 +497,7 @@ kbd {
 .filter-bar { display: grid; gap: 14px; margin-bottom: 28px; }
 .status-filters { display: flex; flex-wrap: wrap; gap: 6px; }
 .filter-bar button, .filter-bar select {
-  border: 1px solid rgba(120, 157, 196, .14); border-radius: 999px; padding: 9px 13px; background: rgba(255,255,255,.04); font-size: 11px;
+  border: 1px solid rgba(120, 157, 196, .16); border-radius: 999px; padding: 9px 13px; background: rgba(255,255,255,.08); font-size: 11px;
 }
 .filter-bar button.active { color: #081018; background: var(--blue); border-color: var(--blue); }
 .task-filter-selects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -491,7 +508,8 @@ kbd {
 }
 .task-filter-selects select {
   width: 100%; min-width: 0; border-radius: 12px; padding: 11px 13px;
-  color: var(--ink-soft); background: rgba(255,255,255,.08);
+  color: var(--ink); background: rgba(232,243,252,.92);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
 }
 .filter-summary { display: flex; align-items: center; justify-content: space-between; min-height: 29px; }
 .filter-summary > div { display: flex; align-items: center; gap: 4px; }
@@ -669,7 +687,7 @@ kbd {
 .context-type-control select,
 .tag-note-control input,
 .context-rename-control input {
-  border: 1px solid rgba(120, 157, 196, .14); border-radius: 9px; padding: 7px 10px; background: rgba(255,255,255,.06); font-size: 11px;
+  border: 1px solid rgba(120, 157, 196, .16); border-radius: 9px; padding: 7px 10px; background: rgba(232,243,252,.9); font-size: 11px;
 }
 .tag-note-control, .context-rename-control { flex-wrap: wrap; }
 .tag-note-control input, .context-rename-control input { min-width: min(320px, 100%); color: var(--ink); }
@@ -733,13 +751,17 @@ kbd {
 .calendar-panel { padding-bottom: 24px; border-bottom: 1px solid rgba(120, 157, 196, .14); }
 .calendar-panel header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
 .calendar-panel header strong { color: var(--ink); font-family: var(--font-editor); font-size: 22px; font-weight: 650; text-transform: capitalize; }
-.calendar-panel header button { border: 0; background: transparent; color: var(--muted); font-size: 19px; }
-.calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
-.calendar-weekdays { margin-bottom: 8px; color: var(--muted); font-size: 10px; font-weight: 700; }
-.calendar-grid button {
-  position: relative; height: 36px; border: 0; border-radius: 10px; background: transparent; font-size: 11px;
+.calendar-panel header button {
+  width: 32px; height: 32px; border: 0; border-radius: 999px; background: rgba(255,255,255,.08);
+  color: #d7e7f5; font-size: 19px;
 }
-.calendar-grid button:hover { background: rgba(119,196,255,.1); }
+.calendar-panel header button:hover { background: rgba(119,196,255,.14); }
+.calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+.calendar-weekdays { margin-bottom: 8px; color: #a9bfd2; font-size: 10px; font-weight: 700; }
+.calendar-grid button {
+  position: relative; height: 36px; border: 0; border-radius: 10px; background: rgba(255,255,255,.03); color: #d8e6f2; font-size: 11px;
+}
+.calendar-grid button:hover { background: rgba(119,196,255,.12); }
 .calendar-grid button.muted { color: #6f8499; }
 .calendar-grid button.selected {
   color: #081018;
@@ -787,7 +809,7 @@ kbd {
 }
 .search-modal, .small-modal {
   width: min(580px, calc(100vw - 32px)); border: 1px solid rgba(120, 157, 196, .14); border-radius: 18px;
-  background: rgba(11,17,27,.96); box-shadow: 0 25px 70px rgba(0,0,0,.32); overflow: hidden;
+  background: linear-gradient(180deg, rgba(22,32,46,.96), rgba(13,21,32,.98)); box-shadow: 0 25px 70px rgba(0,0,0,.32); overflow: hidden;
 }
 .search-box { display: flex; align-items: center; gap: 11px; padding: 16px 18px; border-bottom: 1px solid rgba(120, 157, 196, .14); }
 .search-input { flex: 1; border: 0; outline: 0; background: transparent; font-family: var(--font-ui); font-size: 17px; }
@@ -801,7 +823,7 @@ kbd {
 .search-prompt { padding: 22px; text-align: center; }
 .small-modal { padding: 28px; }
 .small-modal h2 { margin: 0 0 20px; color: var(--ink); font-family: var(--font-editor); font-size: 27px; font-weight: 650; }
-.small-modal input, .small-modal select { width: 100%; border: 1px solid rgba(120, 157, 196, .14); border-radius: 10px; outline: 0; padding: 12px; background: rgba(255,255,255,.06); }
+.small-modal input, .small-modal select { width: 100%; border: 1px solid rgba(120, 157, 196, .16); border-radius: 10px; outline: 0; padding: 12px; background: rgba(232,243,252,.92); color: #112030; }
 .small-modal input:focus-visible, .small-modal select:focus-visible,
 .filter-bar select:focus-visible {
   border-color: #78968b;
@@ -816,7 +838,7 @@ kbd {
 .quick-date-options { display: flex !important; justify-content: flex-start !important; gap: 6px !important; margin-top: 9px !important; }
 .quick-date-options button {
   border: 1px solid rgba(120, 157, 196, .14); border-radius: 999px; padding: 7px 10px;
-  color: var(--muted-strong); background: rgba(255,255,255,.06); font-size: 10px;
+  color: var(--ink-soft); background: rgba(255,255,255,.12); font-size: 10px;
 }
 .quick-date-options button:hover { color: var(--blue); border-color: rgba(119,196,255,.24); }
 .template-modal-backdrop { place-items: center; padding: 28px 16px; }
@@ -857,7 +879,8 @@ kbd {
   border-radius: 10px;
   outline: 0;
   padding: 12px;
-  background: rgba(255,255,255,.06);
+  background: rgba(232,243,252,.92);
+  color: #112030;
 }
 .template-modal-body input:focus-visible {
   border-color: #78968b;
