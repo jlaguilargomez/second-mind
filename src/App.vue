@@ -34,6 +34,7 @@ const {
   syncState,
   workspaceName,
   workspacePersistenceLabel,
+  canRestoreRecoverySnapshots,
   recoverySnapshots,
   theme,
   dailyTemplates,
@@ -138,8 +139,6 @@ const hasTaskFilters = computed(() =>
   priorityFilter.value !== 'all' ||
   Boolean(selectedTag.value),
 )
-
-const hasRecoverySnapshots = computed(() => recoverySnapshots.value.length > 0)
 
 function clearTaskFilters() {
   taskFilter.value = 'open'
@@ -781,11 +780,11 @@ onBeforeUnmount(() => {
         </div>
         <div class="sync-detail">{{ workspacePersistenceLabel }}</div>
         <button
-          v-if="hasRecoverySnapshots"
+          v-if="canRestoreRecoverySnapshots"
           type="button"
           class="secondary-button recovery-button"
           @click="openRecoveryDialog"
-        >Restaurar copia local</button>
+        >Ver copias locales</button>
         <p v-if="connectionError" class="error">{{ connectionError }}</p>
         <p v-if="importError" class="error">{{ importError }}</p>
         <p v-if="recoveryError" class="error">{{ recoveryError }}</p>

@@ -146,9 +146,12 @@ export function useSecondMind() {
 
   const workspacePersistenceLabel = computed(() => {
     if (!directoryHandle.value) return 'Sin carpeta conectada'
-    if (workspacePersistence.value === 'persisted') return 'Carpeta restaurable'
+    if (workspacePersistence.value === 'persisted') return 'Reconexión automática'
     return 'Solo esta sesión'
   })
+  const canRestoreRecoverySnapshots = computed(() =>
+    !directoryHandle.value && recoverySnapshots.value.length > 0,
+  )
 
   const activeNote = computed(() => notes.value.find((note) => note.id === activeNoteId.value))
   const dailyTemplates = computed(() => workspaceSettings.value.dailyTemplates || [])
@@ -1097,6 +1100,7 @@ export function useSecondMind() {
     syncState,
     workspaceName,
     workspacePersistenceLabel,
+    canRestoreRecoverySnapshots,
     recoverySnapshots,
     conflicts,
     allBlocks,

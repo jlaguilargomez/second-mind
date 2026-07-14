@@ -112,7 +112,7 @@ test('si IndexedDB no puede serializar el handle, la carpeta sigue conectándose
   assert.match(composable, /workspacePersistence\.value = \(await saveDirectoryHandle\(handle\)\) \? 'persisted' : 'session'/)
 })
 
-test('la app distingue entre carpeta restaurable y carpeta disponible solo en esta sesión', async () => {
+test('la app distingue entre reconexion automatica y carpeta disponible solo en esta sesión', async () => {
   const [app, composable] = await Promise.all([
     readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
     readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
@@ -120,7 +120,7 @@ test('la app distingue entre carpeta restaurable y carpeta disponible solo en es
 
   assert.match(composable, /const workspacePersistence = ref\('none'\)/)
   assert.match(composable, /const workspacePersistenceLabel = computed\(\(\) =>/)
-  assert.match(composable, /return 'Carpeta restaurable'/)
+  assert.match(composable, /return 'Reconexión automática'/)
   assert.match(composable, /return 'Solo esta sesión'/)
   assert.match(composable, /workspacePersistence\.value = 'persisted'/)
   assert.match(app, /workspacePersistenceLabel/)
@@ -171,16 +171,17 @@ test('las copias de recuperación se pueden listar y restaurar desde la app', as
   ])
 
   assert.match(composable, /const recoverySnapshots = ref\(\[\]\)/)
+  assert.match(composable, /const canRestoreRecoverySnapshots = computed\(\(\) =>/)
   assert.match(composable, /recoverySnapshots\.value = Array\.isArray\(recovery\?\.value\?\.snapshots\)/)
   assert.match(composable, /async function restoreRecoverySnapshot\(snapshotId\)/)
   assert.match(composable, /await persistRecoverySnapshot\('before-restore-snapshot'\)/)
   assert.match(composable, /await repository\.replaceAllNotes\(restoredNotes\)/)
   assert.match(composable, /await repository\.setSetting\(WORKSPACE_SETTINGS_KEY, cloneForStorage\(workspaceSettings\.value\)\)/)
   assert.match(composable, /for \(const note of currentNotes\.filter\(\(item\) => !restoredIdentities\.has\(importIdentity\(item\)\)\)\)/)
-  assert.match(app, /const hasRecoverySnapshots = computed\(\(\) => recoverySnapshots\.value\.length > 0\)/)
+  assert.match(app, /canRestoreRecoverySnapshots/)
   assert.match(app, /function openRecoveryDialog\(\)/)
   assert.match(app, /async function restoreSnapshot\(snapshot\)/)
-  assert.match(app, /Restaurar copia local/)
+  assert.match(app, /Ver copias locales/)
   assert.match(app, /showRecoveryDialog/)
   assert.match(app, /class="recovery-item"/)
 })
