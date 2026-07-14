@@ -2,6 +2,11 @@ const DB_NAME = 'second-mind-handles'
 const STORE_NAME = 'workspace'
 const HANDLE_KEY = 'directory'
 const WORKSPACE_MANIFEST = 'second-mind.json'
+const DIRECTORY_NOTE_KIND = {
+  journals: 'journal',
+  contexts: 'context',
+  tags: 'tag',
+}
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -68,10 +73,10 @@ async function readMarkdownDirectory(directory, kind) {
 export async function readWorkspace(root) {
   const notes = []
   notes.workspaceManifest = await readWorkspaceManifest(root)
-  for (const kind of ['journals', 'contexts', 'tags']) {
+  for (const directoryName of ['journals', 'contexts', 'tags']) {
     try {
-      const directory = await root.getDirectoryHandle(kind)
-      notes.push(...(await readMarkdownDirectory(directory, kind)))
+      const directory = await root.getDirectoryHandle(directoryName)
+      notes.push(...(await readMarkdownDirectory(directory, DIRECTORY_NOTE_KIND[directoryName])))
     } catch (error) {
       if (error.name !== 'NotFoundError') throw error
     }
