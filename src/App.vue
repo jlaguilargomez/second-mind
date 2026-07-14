@@ -33,6 +33,8 @@ const {
   loading,
   syncState,
   workspaceName,
+  workspacePersistenceLabel,
+  recoverySnapshots,
   theme,
   dailyTemplates,
   activeDailyTemplate,
@@ -48,6 +50,7 @@ const searchQuery = ref('')
 const showSearch = ref(false)
 const showContextDialog = ref(false)
 const showTemplateDialog = ref(false)
+const showRecoveryDialog = ref(false)
 const showMobilePanel = ref(false)
 const newContextName = ref('')
 const newContextType = ref(DEFAULT_CONTEXT_TYPE)
@@ -60,6 +63,7 @@ const reminderBlock = ref(null)
 const importInput = ref(null)
 const connectionError = ref('')
 const importError = ref('')
+const recoveryError = ref('')
 const copyState = ref('idle')
 const isOnline = ref(navigator.onLine)
 const updateAvailable = ref(false)
@@ -134,6 +138,8 @@ const hasTaskFilters = computed(() =>
   priorityFilter.value !== 'all' ||
   Boolean(selectedTag.value),
 )
+
+const hasRecoverySnapshots = computed(() => recoverySnapshots.value.length > 0)
 
 function clearTaskFilters() {
   taskFilter.value = 'open'
@@ -574,6 +580,23 @@ async function reloadWorkspace() {
   }
 }
 
+function openRecoveryDialog() {
+  recoveryError.value = ''
+  showRecoveryDialog.value = true
+}
+
+async function restoreSnapshot(snapshot) {
+  recoveryError.value = ''
+  const label = new Date(snapshot.createdAt).toLocaleString()
+  if (!window.confirm(`¿Restaurar la copia de seguridad del ${label}?`)) return
+  try {
+    await mind.restoreRecoverySnapshot(snapshot.id)
+    showRecoveryDialog.value = false
+  } catch (error) {
+    recoveryError.value = error.message
+  }
+}
+
 async function importMarkdownFiles(event) {
   importError.value = ''
   const files = event.target.files
@@ -756,8 +779,16 @@ onBeforeUnmount(() => {
         <div class="sync-line">
           <i :class="{ offline: !isOnline }"></i>{{ syncState }}
         </div>
+        <div class="sync-detail">{{ workspacePersistenceLabel }}</div>
+        <button
+          v-if="hasRecoverySnapshots"
+          type="button"
+          class="secondary-button recovery-button"
+          @click="openRecoveryDialog"
+        >Restaurar copia local</button>
         <p v-if="connectionError" class="error">{{ connectionError }}</p>
         <p v-if="importError" class="error">{{ importError }}</p>
+        <p v-if="recoveryError" class="error">{{ recoveryError }}</p>
       </div>
     </aside>
 
@@ -785,6 +816,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="top-actions">
           <span class="save-state">{{ syncState }}</span>
+          <span class="save-detail">{{ workspacePersistenceLabel }}</span>
           <button
             class="icon-button theme-toggle-button"
             :aria-label="themeToggleLabel"
@@ -1489,6 +1521,32 @@ onBeforeUnmount(() => {
             <button type="button" class="secondary-button" @click="closeTemplateDialog">Cancelar</button>
             <button type="button" class="primary-button" @click="saveTemplateDialog">Guardar plantilla</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showRecoveryDialog" class="modal-backdrop" @click.self="showRecoveryDialog = false">
+      <div class="small-modal recovery-modal">
+        <p class="eyebrow">RECUPERACIÓN LOCAL</p>
+        <h2>Restaura una copia de seguridad reciente</h2>
+        <label>
+          Copias disponibles
+          <div class="recovery-list">
+            <button
+              v-for="snapshot in recoverySnapshots"
+              :key="snapshot.id"
+              type="button"
+              class="recovery-item"
+              @click="restoreSnapshot(snapshot)"
+            >
+              <strong>{{ new Date(snapshot.createdAt).toLocaleString() }}</strong>
+              <span>{{ snapshot.noteCount }} notas · {{ snapshot.reason }}</span>
+            </button>
+          </div>
+        </label>
+        <p v-if="recoveryError" class="error">{{ recoveryError }}</p>
+        <div>
+          <button type="button" class="secondary-button" @click="showRecoveryDialog = false">Cerrar</button>
         </div>
       </div>
     </div>

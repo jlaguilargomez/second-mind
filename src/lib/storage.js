@@ -12,14 +12,25 @@ function openDb() {
   })
 }
 
+function isCloneFailure(error) {
+  return error?.name === 'DataCloneError'
+    || /serializable|clone|clon/i.test(String(error?.message || ''))
+}
+
 export async function saveDirectoryHandle(handle) {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite')
-    transaction.objectStore(STORE_NAME).put(handle, HANDLE_KEY)
-    transaction.oncomplete = resolve
-    transaction.onerror = () => reject(transaction.error)
-  })
+  try {
+    const db = await openDb()
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite')
+      transaction.objectStore(STORE_NAME).put(handle, HANDLE_KEY)
+      transaction.oncomplete = resolve
+      transaction.onerror = () => reject(transaction.error)
+    })
+    return true
+  } catch (error) {
+    if (isCloneFailure(error)) return false
+    throw error
+  }
 }
 
 export async function getDirectoryHandle() {
