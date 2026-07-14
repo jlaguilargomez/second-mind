@@ -665,6 +665,8 @@ onMounted(async () => {
   window.addEventListener('keydown', handleShortcuts)
   window.addEventListener('online', updateOnlineState)
   window.addEventListener('offline', updateOnlineState)
+  window.addEventListener('pagehide', flushPendingSavesOnPageHide)
+  document.addEventListener('visibilitychange', flushPendingSavesOnVisibilityChange)
   notificationTimer = window.setInterval(mind.checkDueNotifications, 60_000)
 })
 
@@ -672,10 +674,20 @@ function updateOnlineState() {
   isOnline.value = navigator.onLine
 }
 
+function flushPendingSavesOnPageHide() {
+  void mind.flushPendingSaves()
+}
+
+function flushPendingSavesOnVisibilityChange() {
+  if (document.visibilityState === 'hidden') void mind.flushPendingSaves()
+}
+
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleShortcuts)
   window.removeEventListener('online', updateOnlineState)
   window.removeEventListener('offline', updateOnlineState)
+  window.removeEventListener('pagehide', flushPendingSavesOnPageHide)
+  document.removeEventListener('visibilitychange', flushPendingSavesOnVisibilityChange)
   window.clearInterval(notificationTimer)
   window.clearTimeout(copyStateTimer)
 })

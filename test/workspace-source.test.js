@@ -134,12 +134,16 @@ test('la interfaz permite recargar manualmente desde carpeta y evita llamar loca
     readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
   ])
 
+  assert.match(composable, /async function flushPendingSaves\(\)/)
+  assert.match(composable, /await flushPendingSaves\(\)/)
   assert.match(composable, /async function reloadWorkspaceFromDisk\(\)/)
   assert.match(composable, /reason: 'reload-from-disk'/)
   assert.match(composable, /activateFirstAvailableNote\(\{ createJournal: false \}\)/)
   assert.match(composable, /activeNoteId\.value = null/)
   assert.match(composable, /'Guardado en carpeta'/)
   assert.match(composable, /'Modo local sin carpeta'/)
+  assert.match(app, /window\.addEventListener\('pagehide', flushPendingSavesOnPageHide\)/)
+  assert.match(app, /document\.addEventListener\('visibilitychange', flushPendingSavesOnVisibilityChange\)/)
   assert.match(app, /function reloadWorkspace\(\)/)
   assert.match(app, /Recargar desde carpeta/)
   assert.match(app, /title="Recargar desde carpeta"/)

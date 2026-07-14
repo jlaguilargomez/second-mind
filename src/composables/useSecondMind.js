@@ -400,7 +400,7 @@ export function useSecondMind() {
     if (options.createRecoverySnapshot !== false) {
       await safeguardWorkspaceReplacement(diskNotes, options.reason || 'workspace-reload')
     }
-    for (const timer of saveTimers.values()) clearTimeout(timer)
+    for (const pendingSave of saveTimers.values()) clearTimeout(pendingSave.timer)
     saveTimers.clear()
     const workspaceNotes = diskNotes.map((note) => normalizeImportedNote(note))
     notes.value = workspaceNotes
@@ -410,6 +410,7 @@ export function useSecondMind() {
 
   async function loadWorkspaceFromDisk() {
     if (!directoryHandle.value) return []
+    await flushPendingSaves()
     syncState.value = 'Recargando carpeta…'
     const diskNotes = await readWorkspace(directoryHandle.value)
     const workspaceNotes = await applyWorkspaceNotes(diskNotes, {
@@ -464,15 +465,31 @@ export function useSecondMind() {
 
   async function persistNote(note, { immediate = false } = {}) {
     const execute = async () => {
+      saveTimers.delete(note.id)
       const existing = notes.value.find((item) => item.id === note.id)
       const { saved, expectedVersion } = prepareNoteForSave(note, existing?.version || note.version)
       replaceNote(saved)
       await savePreparedNote(saved, expectedVersion)
     }
 
-    clearTimeout(saveTimers.get(note.id))
+    const pendingSave = saveTimers.get(note.id)
+    if (pendingSave) clearTimeout(pendingSave.timer)
     if (immediate) return execute()
-    saveTimers.set(note.id, setTimeout(execute, 350))
+    saveTimers.set(note.id, {
+      timer: setTimeout(execute, 350),
+      execute,
+    })
+  }
+
+  async function flushPendingSaves() {
+    const pendingSaves = [...saveTimers.values()]
+    saveTimers.clear()
+    await Promise.all(
+      pendingSaves.map(async ({ timer, execute }) => {
+        clearTimeout(timer)
+        await execute()
+      }),
+    )
   }
 
   async function openDate(date) {
@@ -1138,6 +1155,7 @@ export function useSecondMind() {
     restoreRecoverySnapshot,
     requestNotificationPermission,
     checkDueNotifications,
+    flushPendingSaves,
     openBlock,
     getContext,
     getTag,
