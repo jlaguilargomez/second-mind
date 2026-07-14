@@ -64,7 +64,8 @@ test('al restaurar una carpeta conectada, la carpeta reemplaza el estado de Inde
 
   assert.match(composable, /const workspaceRestored = await restoreWorkspace\(\)/)
   assert.match(composable, /if \(workspaceRestored\) await loadWorkspaceFromDisk\(\)/)
-  assert.match(composable, /async function applyWorkspaceNotes\(diskNotes\)/)
+  assert.match(composable, /async function applyWorkspaceNotes\(diskNotes, options = \{\}\)/)
+  assert.match(composable, /await safeguardWorkspaceReplacement\(diskNotes, options\.reason \|\| 'workspace-reload'\)/)
   assert.match(composable, /notes\.value = workspaceNotes/)
   assert.match(composable, /await repository\.replaceAllNotes\(workspaceNotes\)/)
 })
@@ -76,7 +77,8 @@ test('al conectar una carpeta, solo se exporta el estado actual si la carpeta es
   )
 
   assert.match(composable, /const diskNotes = await readWorkspace\(handle\)/)
-  assert.match(composable, /if \(diskNotes\.length && !hasPendingLocalImport\) \{\s*await applyWorkspaceNotes\(diskNotes\)/)
+  assert.match(composable, /if \(diskNotes\.length && !hasPendingLocalImport\) \{\s*await applyWorkspaceNotes\(diskNotes,\s*\{/)
+  assert.match(composable, /reason: 'connect-existing-workspace'/)
   assert.match(composable, /const notesToWrite = hasPendingLocalImport/)
   assert.match(composable, /for \(const note of notesToWrite\) await writeNote\(handle, note\)/)
   assert.match(composable, /await repository\.replaceAllNotes\(notesToWrite\)/)
@@ -96,6 +98,36 @@ test('al conectar carpeta después de importar Reflect, vuelca la importación l
   assert.match(composable, /hasPendingLocalImport = false/)
 })
 
+test('si IndexedDB no puede serializar el handle, la carpeta sigue conectándose en memoria', async () => {
+  const [storage, composable] = await Promise.all([
+    readFile(new URL('../src/lib/storage.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(storage, /function isCloneFailure\(error\)/)
+  assert.match(storage, /error\?\.name === 'DataCloneError'/)
+  assert.match(storage, /if \(isCloneFailure\(error\)\) return false/)
+  assert.match(composable, /directoryHandle\.value = handle/)
+  assert.match(composable, /workspaceName\.value = handle\.name/)
+  assert.match(composable, /workspacePersistence\.value = \(await saveDirectoryHandle\(handle\)\) \? 'persisted' : 'session'/)
+})
+
+test('la app distingue entre carpeta restaurable y carpeta disponible solo en esta sesión', async () => {
+  const [app, composable] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(composable, /const workspacePersistence = ref\('none'\)/)
+  assert.match(composable, /const workspacePersistenceLabel = computed\(\(\) =>/)
+  assert.match(composable, /return 'Carpeta restaurable'/)
+  assert.match(composable, /return 'Solo esta sesión'/)
+  assert.match(composable, /workspacePersistence\.value = 'persisted'/)
+  assert.match(app, /workspacePersistenceLabel/)
+  assert.match(app, /class="sync-detail"/)
+  assert.match(app, /class="save-detail"/)
+})
+
 test('la interfaz permite recargar manualmente desde carpeta y evita llamar local al estado conectado', async () => {
   const [app, composable] = await Promise.all([
     readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
@@ -103,6 +135,7 @@ test('la interfaz permite recargar manualmente desde carpeta y evita llamar loca
   ])
 
   assert.match(composable, /async function reloadWorkspaceFromDisk\(\)/)
+  assert.match(composable, /reason: 'reload-from-disk'/)
   assert.match(composable, /activateFirstAvailableNote\(\{ createJournal: false \}\)/)
   assert.match(composable, /activeNoteId\.value = null/)
   assert.match(composable, /'Guardado en carpeta'/)
@@ -110,6 +143,43 @@ test('la interfaz permite recargar manualmente desde carpeta y evita llamar loca
   assert.match(app, /function reloadWorkspace\(\)/)
   assert.match(app, /Recargar desde carpeta/)
   assert.match(app, /title="Recargar desde carpeta"/)
+})
+
+test('la reconexión segura guarda un snapshot local antes de reemplazar notas o ajustes', async () => {
+  const composable = await readFile(
+    new URL('../src/composables/useSecondMind.js', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(composable, /const WORKSPACE_RECOVERY_KEY = 'workspace-recovery'/)
+  assert.match(composable, /function noteSnapshotFingerprint\(note\)/)
+  assert.match(composable, /async function persistRecoverySnapshot\(reason, diskNotes = \[\]\)/)
+  assert.match(composable, /recoverySnapshots\.value = \[snapshot, \.\.\.existingSnapshots\]\.slice\(0, 3\)/)
+  assert.match(composable, /await repository\.setSetting\(WORKSPACE_RECOVERY_KEY, \{/)
+  assert.match(composable, /snapshots: recoverySnapshots\.value/)
+  assert.match(composable, /const needsSnapshot = hasWorkspaceDifferences\(notes\.value, diskNotes\)/)
+  assert.match(composable, /\|\| hasSettingsDifferences\(diskNotes\.workspaceManifest\)/)
+})
+
+test('las copias de recuperación se pueden listar y restaurar desde la app', async () => {
+  const [app, composable] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(composable, /const recoverySnapshots = ref\(\[\]\)/)
+  assert.match(composable, /recoverySnapshots\.value = Array\.isArray\(recovery\?\.value\?\.snapshots\)/)
+  assert.match(composable, /async function restoreRecoverySnapshot\(snapshotId\)/)
+  assert.match(composable, /await persistRecoverySnapshot\('before-restore-snapshot'\)/)
+  assert.match(composable, /await repository\.replaceAllNotes\(restoredNotes\)/)
+  assert.match(composable, /await repository\.setSetting\(WORKSPACE_SETTINGS_KEY, workspaceSettings\.value\)/)
+  assert.match(composable, /for \(const note of currentNotes\.filter\(\(item\) => !restoredIdentities\.has\(importIdentity\(item\)\)\)\)/)
+  assert.match(app, /const hasRecoverySnapshots = computed\(\(\) => recoverySnapshots\.value\.length > 0\)/)
+  assert.match(app, /function openRecoveryDialog\(\)/)
+  assert.match(app, /async function restoreSnapshot\(snapshot\)/)
+  assert.match(app, /Restaurar copia local/)
+  assert.match(app, /showRecoveryDialog/)
+  assert.match(app, /class="recovery-item"/)
 })
 
 test('el workspace exporta e importa settings de plantillas mediante second-mind.json', async () => {

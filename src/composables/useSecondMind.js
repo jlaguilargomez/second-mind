@@ -45,6 +45,7 @@ import {
 
 const LEGACY_LOCAL_KEY = 'second-mind-notes-v1'
 const THEME_PREFERENCE_KEY = 'second-mind-theme'
+const WORKSPACE_RECOVERY_KEY = 'workspace-recovery'
 const contextPalette = ['sage', 'blue', 'amber', 'violet', 'rose']
 const contextEmojis = ['◈', '●', '◆', '✦', '⬡']
 export const contextTypes = {
@@ -98,6 +99,22 @@ function importIdentity(note) {
   return `context:${note.title.toLocaleLowerCase()}`
 }
 
+function noteSnapshotFingerprint(note) {
+  const normalized = normalizeImportedNote(note)
+  return JSON.stringify({
+    identity: importIdentity(normalized),
+    kind: normalized.kind,
+    filename: normalized.filename,
+    date: normalized.date,
+    title: normalized.title,
+    markdown: normalized.markdown,
+    emoji: normalized.emoji,
+    color: normalized.color,
+    contextType: normalized.contextType,
+    description: normalized.description || '',
+  })
+}
+
 export function useSecondMind() {
   const repository = new LocalRepository()
   const notes = ref([])
@@ -110,6 +127,8 @@ export function useSecondMind() {
   const syncState = ref('Preparando…')
   const directoryHandle = ref(null)
   const workspaceName = ref('Local sin carpeta')
+  const workspacePersistence = ref('none')
+  const recoverySnapshots = ref([])
   const conflicts = ref([])
   const notifiedReminders = new Set()
   const saveTimers = new Map()
@@ -119,6 +138,12 @@ export function useSecondMind() {
     if (directoryHandle.value) return 'Guardado en carpeta'
     return navigator.onLine ? 'Modo local sin carpeta' : 'Sin conexión · modo local'
   }
+
+  const workspacePersistenceLabel = computed(() => {
+    if (!directoryHandle.value) return 'Sin carpeta conectada'
+    if (workspacePersistence.value === 'persisted') return 'Carpeta restaurable'
+    return 'Solo esta sesión'
+  })
 
   const activeNote = computed(() => notes.value.find((note) => note.id === activeNoteId.value))
   const dailyTemplates = computed(() => workspaceSettings.value.dailyTemplates || [])
@@ -231,13 +256,67 @@ export function useSecondMind() {
     }
   }
 
+  function hasWorkspaceDifferences(currentNotes, diskNotes) {
+    const currentEntries = currentNotes.map(noteSnapshotFingerprint).sort()
+    const diskEntries = diskNotes.map(noteSnapshotFingerprint).sort()
+    if (currentEntries.length !== diskEntries.length) return true
+    return currentEntries.some((entry, index) => entry !== diskEntries[index])
+  }
+
+  function hasSettingsDifferences(manifest = null) {
+    const currentSettings = normalizeWorkspaceSettings(workspaceSettings.value)
+    const nextSettings = normalizeWorkspaceSettings({
+      ...currentSettings,
+      ...(manifest?.settings || {}),
+    })
+    return JSON.stringify(currentSettings) !== JSON.stringify(nextSettings)
+  }
+
+  async function persistRecoverySnapshot(reason, diskNotes = []) {
+    const stored = await repository.getSetting(WORKSPACE_RECOVERY_KEY)
+    const existingSnapshots = Array.isArray(stored?.value?.snapshots)
+      ? stored.value.snapshots
+      : Array.isArray(stored?.snapshots)
+        ? stored.snapshots
+        : []
+    const snapshot = {
+      id: createId(),
+      createdAt: new Date().toISOString(),
+      reason,
+      workspaceName: workspaceName.value,
+      notes: notes.value.map((note) => normalizeNote(note)),
+      settings: normalizeWorkspaceSettings(workspaceSettings.value),
+      noteCount: notes.value.length,
+      diskNoteCount: diskNotes.length,
+    }
+    recoverySnapshots.value = [snapshot, ...existingSnapshots].slice(0, 3)
+    await repository.setSetting(WORKSPACE_RECOVERY_KEY, {
+      snapshots: recoverySnapshots.value,
+    })
+  }
+
+  async function safeguardWorkspaceReplacement(diskNotes, reason) {
+    if (!notes.value.length) return false
+    const needsSnapshot = hasWorkspaceDifferences(notes.value, diskNotes)
+      || hasSettingsDifferences(diskNotes.workspaceManifest)
+    if (!needsSnapshot) return false
+    await persistRecoverySnapshot(reason, diskNotes)
+    return true
+  }
+
   async function loadSavedSettings() {
     const stored = await repository.getSetting(WORKSPACE_SETTINGS_KEY)
+    const recovery = await repository.getSetting(WORKSPACE_RECOVERY_KEY)
     const storedTheme = localStorage.getItem(THEME_PREFERENCE_KEY)
     workspaceSettings.value = normalizeWorkspaceSettings({
       ...(stored?.value || stored || {}),
       theme: storedTheme === 'light' ? 'light' : storedTheme === 'dark' ? 'dark' : stored?.value?.theme,
     })
+    recoverySnapshots.value = Array.isArray(recovery?.value?.snapshots)
+      ? recovery.value.snapshots
+      : Array.isArray(recovery?.snapshots)
+        ? recovery.snapshots
+        : []
   }
 
   async function persistWorkspaceSettings() {
@@ -309,7 +388,10 @@ export function useSecondMind() {
     ]
   }
 
-  async function applyWorkspaceNotes(diskNotes) {
+  async function applyWorkspaceNotes(diskNotes, options = {}) {
+    if (options.createRecoverySnapshot !== false) {
+      await safeguardWorkspaceReplacement(diskNotes, options.reason || 'workspace-reload')
+    }
     for (const timer of saveTimers.values()) clearTimeout(timer)
     saveTimers.clear()
     const workspaceNotes = diskNotes.map((note) => normalizeImportedNote(note))
@@ -322,8 +404,10 @@ export function useSecondMind() {
     if (!directoryHandle.value) return []
     syncState.value = 'Recargando carpeta…'
     const diskNotes = await readWorkspace(directoryHandle.value)
+    const workspaceNotes = await applyWorkspaceNotes(diskNotes, {
+      reason: 'reload-from-disk',
+    })
     await applyWorkspaceManifest(diskNotes.workspaceManifest)
-    const workspaceNotes = await applyWorkspaceNotes(diskNotes)
     syncState.value = settledSyncState()
     return workspaceNotes
   }
@@ -843,12 +927,14 @@ export function useSecondMind() {
   async function connectWorkspace() {
     if (!window.showDirectoryPicker) throw new Error('Este navegador no permite abrir carpetas.')
     const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
-    await saveDirectoryHandle(handle)
     directoryHandle.value = handle
     workspaceName.value = handle.name
+    workspacePersistence.value = (await saveDirectoryHandle(handle)) ? 'persisted' : 'session'
     const diskNotes = await readWorkspace(handle)
     if (diskNotes.length && !hasPendingLocalImport) {
-      await applyWorkspaceNotes(diskNotes)
+      await applyWorkspaceNotes(diskNotes, {
+        reason: 'connect-existing-workspace',
+      })
       await applyWorkspaceManifest(diskNotes.workspaceManifest)
     } else {
       const notesToWrite = hasPendingLocalImport
@@ -886,11 +972,13 @@ export function useSecondMind() {
       if (handle && (await verifyPermission(handle, true))) {
         directoryHandle.value = handle
         workspaceName.value = handle.name
+        workspacePersistence.value = 'persisted'
         const manifest = await readWorkspaceManifest(handle)
         await applyWorkspaceManifest(manifest)
         return true
       }
     } catch {
+      workspacePersistence.value = 'none'
       syncState.value = 'Modo local sin carpeta'
     }
     return false
@@ -900,6 +988,33 @@ export function useSecondMind() {
     if (!directoryHandle.value) throw new Error('No hay ninguna carpeta conectada.')
     await loadWorkspaceFromDisk()
     await activateFirstAvailableNote({ createJournal: false })
+  }
+
+  async function restoreRecoverySnapshot(snapshotId) {
+    const snapshot = recoverySnapshots.value.find((item) => item.id === snapshotId)
+    if (!snapshot) throw new Error('No se encontró la copia de seguridad seleccionada.')
+    await persistRecoverySnapshot('before-restore-snapshot')
+    const currentNotes = notes.value.map((note) => normalizeNote(note))
+    const restoredNotes = (snapshot.notes || []).map((note) => normalizeNote(note))
+    const restoredIdentities = new Set(restoredNotes.map(importIdentity))
+    notes.value = restoredNotes
+    workspaceSettings.value = normalizeWorkspaceSettings(snapshot.settings || {})
+    localStorage.setItem(THEME_PREFERENCE_KEY, workspaceSettings.value.theme)
+    await repository.replaceAllNotes(restoredNotes)
+    await repository.setSetting(WORKSPACE_SETTINGS_KEY, workspaceSettings.value)
+    if (directoryHandle.value) {
+      for (const note of currentNotes.filter((item) => !restoredIdentities.has(importIdentity(item)))) {
+        try {
+          await removeNote(directoryHandle.value, note)
+        } catch (error) {
+          if (error.name !== 'NotFoundError') throw error
+        }
+      }
+      for (const note of restoredNotes) await writeNote(directoryHandle.value, note)
+      await writeWorkspaceManifest(directoryHandle.value, createWorkspaceManifest())
+    }
+    await activateFirstAvailableNote({ createJournal: false })
+    syncState.value = settledSyncState()
   }
 
   async function requestNotificationPermission() {
@@ -976,6 +1091,8 @@ export function useSecondMind() {
     loading,
     syncState,
     workspaceName,
+    workspacePersistenceLabel,
+    recoverySnapshots,
     conflicts,
     allBlocks,
     tasks,
@@ -1009,6 +1126,7 @@ export function useSecondMind() {
     importDirectory,
     connectWorkspace,
     reloadWorkspaceFromDisk,
+    restoreRecoverySnapshot,
     requestNotificationPermission,
     checkDueNotifications,
     openBlock,
