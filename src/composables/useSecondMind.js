@@ -115,6 +115,11 @@ function noteSnapshotFingerprint(note) {
   })
 }
 
+function cloneForStorage(value) {
+  if (value == null) return value
+  return JSON.parse(JSON.stringify(value))
+}
+
 export function useSecondMind() {
   const repository = new LocalRepository()
   const notes = ref([])
@@ -284,14 +289,14 @@ export function useSecondMind() {
       createdAt: new Date().toISOString(),
       reason,
       workspaceName: workspaceName.value,
-      notes: notes.value.map((note) => normalizeNote(note)),
-      settings: normalizeWorkspaceSettings(workspaceSettings.value),
+      notes: cloneForStorage(notes.value.map((note) => normalizeNote(note))),
+      settings: cloneForStorage(normalizeWorkspaceSettings(workspaceSettings.value)),
       noteCount: notes.value.length,
       diskNoteCount: diskNotes.length,
     }
-    recoverySnapshots.value = [snapshot, ...existingSnapshots].slice(0, 3)
+    recoverySnapshots.value = cloneForStorage([snapshot, ...existingSnapshots].slice(0, 3))
     await repository.setSetting(WORKSPACE_RECOVERY_KEY, {
-      snapshots: recoverySnapshots.value,
+      snapshots: cloneForStorage(recoverySnapshots.value),
     })
   }
 
@@ -322,7 +327,7 @@ export function useSecondMind() {
   async function persistWorkspaceSettings() {
     workspaceSettings.value = normalizeWorkspaceSettings(workspaceSettings.value)
     localStorage.setItem(THEME_PREFERENCE_KEY, workspaceSettings.value.theme)
-    await repository.setSetting(WORKSPACE_SETTINGS_KEY, workspaceSettings.value)
+    await repository.setSetting(WORKSPACE_SETTINGS_KEY, cloneForStorage(workspaceSettings.value))
     if (directoryHandle.value) {
       await writeWorkspaceManifest(directoryHandle.value, createWorkspaceManifest())
     }
@@ -334,7 +339,7 @@ export function useSecondMind() {
       ...(manifest?.settings || {}),
     })
     localStorage.setItem(THEME_PREFERENCE_KEY, workspaceSettings.value.theme)
-    await repository.setSetting(WORKSPACE_SETTINGS_KEY, workspaceSettings.value)
+    await repository.setSetting(WORKSPACE_SETTINGS_KEY, cloneForStorage(workspaceSettings.value))
   }
 
   async function setTheme(nextTheme) {
@@ -1001,7 +1006,7 @@ export function useSecondMind() {
     workspaceSettings.value = normalizeWorkspaceSettings(snapshot.settings || {})
     localStorage.setItem(THEME_PREFERENCE_KEY, workspaceSettings.value.theme)
     await repository.replaceAllNotes(restoredNotes)
-    await repository.setSetting(WORKSPACE_SETTINGS_KEY, workspaceSettings.value)
+    await repository.setSetting(WORKSPACE_SETTINGS_KEY, cloneForStorage(workspaceSettings.value))
     if (directoryHandle.value) {
       for (const note of currentNotes.filter((item) => !restoredIdentities.has(importIdentity(item)))) {
         try {
