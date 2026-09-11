@@ -92,7 +92,7 @@ test('el diario puede aplicar y editar una plantilla diaria personalizable', asy
   assert.match(app, /function openTemplateDialog\(\)/)
   assert.match(app, /function saveTemplateDialog\(\)/)
   assert.match(app, /Usar plantilla/)
-  assert.match(app, /Editar plantilla diaria/)
+  assert.doesNotMatch(app, /aria-label="Editar plantilla diaria"/)
   assert.match(app, /PLANTILLA DIARIA/)
   assert.match(app, /Guardar plantilla/)
   assert.match(styles, /\.template-modal/)

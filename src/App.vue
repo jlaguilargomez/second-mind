@@ -869,11 +869,6 @@ async function exportWorkspace() {
   URL.revokeObjectURL(url)
 }
 
-async function enableNotifications() {
-  await mind.requestNotificationPermission()
-  mind.checkDueNotifications()
-}
-
 function handleShortcuts(event) {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
@@ -1084,18 +1079,6 @@ onBeforeUnmount(() => {
           >
             {{ theme === 'dark' ? '☼' : '◐' }}
           </button>
-          <button
-            class="icon-button"
-            aria-label="Activar notificaciones"
-            title="Activar notificaciones"
-            @click="enableNotifications"
-          >♢</button>
-          <button
-            class="icon-button"
-            aria-label="Editar plantilla diaria"
-            title="Editar plantilla diaria"
-            @click="openTemplateDialog"
-          >▤</button>
           <button
             class="icon-button"
             aria-label="Conectar carpeta local"
