@@ -326,7 +326,7 @@ Solución: serializar el estado actual en el momento de exportar, en lugar de co
 
 Ocultar el selector de tipo hasta que el puntero pasa sobre una fila ahorra espacio, pero reduce mucho la descubribilidad y deja a los dispositivos táctiles sin una ruta clara.
 
-Solución: mostrar una barra contextual al editar con opciones explícitas para entrada, tarea y título. La misma barra reúne las acciones relacionadas con el bloque y se adapta a una cuadrícula táctil en móvil. Los párrafos Markdown importados siguen siendo compatibles, pero no ocupan una decisión principal durante la captura.
+Solución: mostrar una barra contextual al editar con opciones explícitas para entrada y tarea. La misma barra reúne las acciones relacionadas con el bloque y se adapta a una cuadrícula táctil en móvil. Los párrafos y encabezados Markdown importados siguen siendo compatibles, pero no ocupan una decisión principal durante la captura.
 
 Para mantener la escritura fluida, `Intro` crea un bloque inmediatamente después, conserva el tipo salvo después de un título y mueve el foco al nuevo bloque. Un botón persistente al final del diario ofrece la alternativa visible para quien todavía no conoce el atajo.
 
@@ -494,7 +494,7 @@ La lección general es que una jerarquía visual que afecta a búsqueda, filtros
 
 ## 19. Prioridad lean y reducción de tipos visibles
 
-La diferencia entre una entrada con viñeta y un párrafo libre era técnicamente correcta, pero no aportaba suficiente valor durante la captura diaria. El editor presenta ahora solo tres decisiones: **Entrada**, **Tarea** y **Título**. El tipo interno `text` se conserva para poder importar y exportar párrafos Markdown existentes sin pérdida, aunque ya no se ofrece para crear bloques nuevos.
+La diferencia entre una entrada con viñeta y un párrafo libre era técnicamente correcta, pero no aportaba suficiente valor durante la captura diaria. El editor presenta ahora solo dos decisiones: **Entrada** y **Tarea**. Los tipos internos `text` y `heading` se conservan para poder importar y exportar contenido Markdown existente sin pérdida, aunque ya no se ofrecen para crear bloques nuevos.
 
 Las tareas incorporan una prioridad de tres estados:
 

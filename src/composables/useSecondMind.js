@@ -357,6 +357,17 @@ export function useSecondMind() {
     await setTheme(theme.value === 'dark' ? 'light' : 'dark')
   }
 
+  async function setAssistantSettings(settings) {
+    workspaceSettings.value = normalizeWorkspaceSettings({
+      ...workspaceSettings.value,
+      assistant: {
+        ...workspaceSettings.value.assistant,
+        ...settings,
+      },
+    })
+    await persistWorkspaceSettings()
+  }
+
   async function initialize() {
     await repository.initialize()
     await loadSavedSettings()
@@ -1147,6 +1158,7 @@ export function useSecondMind() {
     applyDailyTemplate,
     setTheme,
     toggleTheme,
+    setAssistantSettings,
     createWorkspaceManifest,
     importFiles,
     importDirectory,

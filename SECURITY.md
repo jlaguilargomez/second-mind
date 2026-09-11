@@ -12,6 +12,28 @@ Second Mind está diseñado para trabajar localmente con información profesiona
 - `RemoteRepository` es solamente un contrato de integración: no se instancia ni transmite información.
 - La PWA solicita confirmación antes de activar una nueva versión.
 
+## Asistente local
+
+La integración opcional con IA se conecta únicamente a Ollama en `localhost` o
+`127.0.0.1`. La política de seguridad del navegador no permite que esta función
+contacte con servicios de IA externos.
+
+- El asistente está desactivado hasta que el usuario abre su vista y comprueba Ollama.
+- Cada pregunta envía al modelo local un dossier temporal con tareas abiertas,
+  seguimientos y bloques de diario del periodo seleccionado.
+- Las tareas abiertas pueden ser anteriores al periodo para evitar compromisos perdidos.
+- El dossier incluye contenido, fecha, estado, prioridad, recordatorio, contextos,
+  etiquetas e identificadores internos necesarios para enlazar las fuentes.
+- El contenido se ordena y limita antes de enviarlo al modelo.
+- Las conversaciones y respuestas viven solo en memoria y desaparecen al recargar.
+- Solo se guarda la URL local y el nombre del modelo; no se almacenan claves.
+- El modelo no dispone de operaciones para modificar notas o tareas.
+
+Ollama es un proceso separado y su almacenamiento, registros y modelos deben
+administrarse conforme a las políticas del equipo. En un despliegue web puede ser
+necesario autorizar explícitamente el origen de Second Mind mediante
+`OLLAMA_ORIGINS`.
+
 ## Límites de seguridad
 
 El almacenamiento local no equivale a cifrado:
@@ -66,4 +88,3 @@ Requisitos mínimos:
 ## Reporte de vulnerabilidades
 
 No publiques contenido profesional, capturas o datos reales en una incidencia pública. Comunica los problemas de seguridad directamente al propietario del repositorio.
-
