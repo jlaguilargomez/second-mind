@@ -120,6 +120,19 @@ const pageTitle = computed(() => {
   if (currentView.value === 'tags') return 'Etiquetas / Proyectos'
   return 'Second Mind'
 })
+const breadcrumbParent = computed(() => {
+  if (currentView.value === 'journal') return { label: 'Diario', target: 'journal' }
+  if (currentView.value === 'notes' && activeNote.value?.kind === 'note') {
+    return { label: 'Notas', target: 'notes' }
+  }
+  if (currentView.value === 'context' && selectedContext.value) {
+    return { label: 'Contextos', target: 'contexts' }
+  }
+  if (currentView.value === 'tags' && selectedTag.value) {
+    return { label: 'Etiquetas', target: 'tags' }
+  }
+  return null
+})
 const compactJournalTitle = computed(() =>
   new Date(`${selectedDate.value}T12:00:00`).toLocaleDateString(undefined, {
     weekday: 'long',
@@ -410,14 +423,26 @@ function navigate(view) {
 }
 
 function openNotes() {
-  const firstNote = independentNotes.value[0]
-  if (firstNote) void mind.openNote(firstNote.id)
-  else {
-    activeNoteId.value = null
-    mind.setView('notes')
-  }
+  activeNoteId.value = null
+  mind.setView('notes')
   showMobilePanel.value = false
   showMobileMore.value = false
+}
+
+function openBreadcrumbParent() {
+  if (breadcrumbParent.value?.target === 'journal') {
+    openDate(isoDate())
+    return
+  }
+  if (breadcrumbParent.value?.target === 'notes') {
+    openNotes()
+    return
+  }
+  if (breadcrumbParent.value?.target === 'contexts') {
+    navigate('contexts')
+    return
+  }
+  if (breadcrumbParent.value?.target === 'tags') openTagsIndex()
 }
 
 function createAssistantProvider() {
@@ -1071,8 +1096,12 @@ onBeforeUnmount(() => {
           title="Calendario y próximos recordatorios"
           @click="showMobileMore = false; showMobilePanel = !showMobilePanel"
         >▦</button>
-        <div class="breadcrumbs">
-          <span>{{ currentView }}</span><b>/</b><strong>{{ pageTitle }}</strong>
+        <nav class="breadcrumbs" aria-label="Ruta de navegación">
+          <template v-if="breadcrumbParent">
+            <button type="button" @click="openBreadcrumbParent">{{ breadcrumbParent.label }}</button>
+            <b aria-hidden="true">/</b>
+          </template>
+          <strong aria-current="page">{{ pageTitle }}</strong>
           <button
             v-if="canCopySection"
             class="copy-section-button"
@@ -1083,7 +1112,7 @@ onBeforeUnmount(() => {
           >
             {{ copyState === 'copied' ? '✓ Copiado' : copyState === 'error' ? 'Error' : '⧉ Markdown' }}
           </button>
-        </div>
+        </nav>
         <div class="top-actions">
           <span class="save-state">{{ syncState }}</span>
           <span class="save-detail">{{ workspacePersistenceLabel }}</span>

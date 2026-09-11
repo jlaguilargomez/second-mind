@@ -604,7 +604,8 @@ export function useSecondMind() {
   async function deleteNote(id) {
     const note = independentNotes.value.find((item) => item.id === id)
     if (!note) return
-    clearTimeout(saveTimers.get(id))
+    const pendingSave = saveTimers.get(id)
+    if (pendingSave) clearTimeout(pendingSave.timer)
     saveTimers.delete(id)
     await repository.deleteNote(id)
     if (directoryHandle.value) {
@@ -613,7 +614,11 @@ export function useSecondMind() {
       }
     }
     notes.value = notes.value.filter((item) => item.id !== id)
-    if (activeNoteId.value === id) await activateFirstAvailableNote({ createJournal: false })
+    if (activeNoteId.value === id) {
+      activeNoteId.value = null
+      selectedContext.value = null
+      currentView.value = 'notes'
+    }
   }
 
   async function activateFirstAvailableNote({ createJournal = true } = {}) {

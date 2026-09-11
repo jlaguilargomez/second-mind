@@ -356,6 +356,12 @@ kbd {
 }
 .breadcrumbs { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; text-transform: capitalize; }
 .breadcrumbs b { font-weight: 400; }
+.breadcrumbs > button:not(.copy-section-button) {
+  border: 0; padding: 3px 0; color: var(--muted); background: transparent;
+  font: inherit; text-transform: capitalize;
+}
+.breadcrumbs > button:not(.copy-section-button):hover { color: var(--blue); }
+.breadcrumbs > button:not(.copy-section-button):focus-visible { outline-offset: 3px; }
 .breadcrumbs strong { color: var(--muted-strong); font-family: var(--font-mono); font-size: 12px; font-weight: 520; text-transform: none; }
 .copy-section-button {
   border: 1px solid rgba(120, 157, 196, .14); border-radius: 10px; padding: 6px 9px;
@@ -1520,7 +1526,7 @@ html[data-theme="light"] .mobile-nav button.active { color: var(--blue); }
     font-size: 21px;
     line-height: 1;
   }
-  .breadcrumbs span, .breadcrumbs b, .save-state, .save-detail, .top-actions .primary-button { display: none; }
+  .breadcrumbs b, .save-state, .save-detail, .top-actions .primary-button { display: none; }
   .breadcrumbs {
     flex: 0 1 auto;
     min-width: 0;
@@ -1528,7 +1534,17 @@ html[data-theme="light"] .mobile-nav button.active { color: var(--blue); }
     overflow: hidden;
     gap: 6px;
   }
+  .breadcrumbs > button:not(.copy-section-button) {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .breadcrumbs > button:not(.copy-section-button)::before { content: '‹'; margin-right: 4px; }
   .breadcrumbs strong { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .breadcrumbs:has(> button:not(.copy-section-button)) strong { display: none; }
   .breadcrumbs:has(.copy-section-button) strong { display: none; }
   .copy-section-button {
     max-width: 100%;
