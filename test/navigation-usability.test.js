@@ -202,6 +202,30 @@ test('la vista de contextos agrupa por tipo manteniendo el fallback por defecto'
   assert.match(styles, /\.context-group/)
 })
 
+test('la sección de notas independientes tiene listado, editor y navegación móvil', async () => {
+  const [app, storage, composable] = await Promise.all([
+    readFile(new URL('../src/App.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/lib/storage.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useSecondMind.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(app, /currentView === 'notes'/)
+  assert.match(app, /independentNotes/)
+  assert.match(app, /Nueva nota/)
+  assert.match(app, /Eliminar nota/)
+  assert.match(app, /showNoteDialog/)
+  assert.doesNotMatch(app, /prompt\('Título de la nota'/)
+  assert.match(app, /class="note-card-list"/)
+  assert.match(app, /@click="openNotes"/)
+  assert.match(storage, /notes: 'note'/)
+  assert.match(storage, /\['journals', 'contexts', 'tags', 'notes'\]/)
+  assert.match(composable, /function noteFilename/)
+  assert.match(composable, /async function openNote\(id\)/)
+  assert.match(composable, /async function renameNote\(id, title\)/)
+  assert.match(composable, /async function deleteNote\(id\)/)
+  assert.match(composable, /note\.kind === 'note' \? \[\] : note\.blocks/)
+})
+
 test('la interfaz móvil usa iconos legibles y objetivos táctiles amplios', async () => {
   const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
 
@@ -211,7 +235,7 @@ test('la interfaz móvil usa iconos legibles y objetivos táctiles amplios', asy
   assert.match(styles, /\.top-actions\s*\{[\s\S]*max-width:\s*calc\(100vw - 190px\);[\s\S]*overflow-x:\s*auto;/)
   assert.match(styles, /\.top-actions \.icon-button\s*\{[\s\S]*width:\s*38px;[\s\S]*flex:\s*0 0 auto;[\s\S]*font-size:\s*23px;/)
   assert.match(styles, /@media \(max-width:\s*390px\)/)
-  assert.match(styles, /\.mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(6, 1fr\);/)
+  assert.match(styles, /\.mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(7, 1fr\);/)
   assert.match(styles, /\.mobile-nav button span\s*\{\s*font-size:\s*24px;/)
   assert.match(styles, /\.task-toggle\s*\{\s*width:\s*24px;\s*height:\s*24px;/)
   assert.match(styles, /\.block-kind-button\s*\{\s*width:\s*26px;\s*height:\s*26px;/)

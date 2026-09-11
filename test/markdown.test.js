@@ -107,6 +107,24 @@ test('conserva el tipo de contexto en Markdown', () => {
   assert.match(serializeNote(note), /contextType: person/)
 })
 
+test('normaliza y serializa notas independientes sin fecha', () => {
+  const note = normalizeNote({
+    kind: 'note',
+    filename: 'inicio-del-dia.md',
+    title: 'Inicio del día',
+    blocks: [
+      { ...createBlock('heading', 'Inicio del día'), level: 1 },
+      { ...createBlock('task', 'Revisar prioridades'), checked: true },
+    ],
+  })
+
+  assert.equal(note.kind, 'note')
+  assert.equal(note.date, null)
+  assert.match(note.markdown, /type: note/)
+  assert.match(note.markdown, /name: Inicio del día/)
+  assert.match(note.markdown, /- \[x\] Revisar prioridades/)
+})
+
 test('los contextos sin tipo explícito se crean como área', () => {
   const note = normalizeNote({
     kind: 'context',

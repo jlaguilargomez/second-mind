@@ -25,11 +25,15 @@ npm run dev
 mi-segundo-cerebro/
 ├── journals/
 │   └── 2026-06-21.md
+├── notes/
+│   └── inicio-del-dia.md
 └── contexts/
     └── producto.md
 ```
 
 Los `@contextos` agrupan personas, equipos, áreas o zonas de trabajo. Las `#etiquetas` actúan como proyectos: reúnen tareas pendientes, tareas completadas y la bitácora relacionada. Los enlaces heredados `[[Producto]]` continúan funcionando como contextos.
+
+Las notas independientes viven en `notes/` y no están vinculadas a una fecha. Pueden contener listas permanentes con tareas marcables, como una rutina de inicio o cierre del día. Su contenido se mantiene aislado de las vistas globales de tareas, agenda, búsqueda y asistente.
 
 Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área para conservar compatibilidad con notas existentes, aunque el seguimiento de proyectos se hace desde etiquetas. La vista **Seguimiento** reúne personas relacionadas, equipos/áreas y tareas marcadas con `#delegado` o `#esperando`. Mencionar una `@persona` no convierte una tarea propia en seguimiento.
 
@@ -81,7 +85,7 @@ Cada bloque conserva un identificador estable y sus propiedades dentro del propi
 - Los cambios se guardan también como una cola de operaciones preparada para sincronización.
 - `LocalRepository`, `RemoteRepository` y `SyncRepository` separan la aplicación Vue del almacenamiento.
 - Markdown continúa siendo el contenido canónico y puede importarse o exportarse como archivos o ZIP.
-- La conexión opcional con una carpeta mantiene copias en `journals/` y `contexts/`.
+- La conexión opcional con una carpeta mantiene copias en `journals/`, `notes/` y `contexts/`.
 
 El contrato previsto para el servidor está representado por `RemoteRepository` y utiliza `/v1/notes`, `/v1/sync`, `/v1/reminders` y `/v1/devices`.
 

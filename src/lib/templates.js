@@ -95,6 +95,20 @@ export function createJournalNote(date) {
   })
 }
 
+export function createIndependentNote(title = 'Nueva nota') {
+  const safeTitle = String(title || 'Nueva nota').trim() || 'Nueva nota'
+  return normalizeNote({
+    id: createId(),
+    kind: 'note',
+    filename: `${safeTitle.toLocaleLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi, '-').replace(/^-|-$/g, '') || 'nota'}.md`,
+    title: safeTitle,
+    blocks: [
+      { ...createBlock('heading', safeTitle), level: 1 },
+      createBlock('log', ''),
+    ],
+  })
+}
+
 export function isBaseJournal(note) {
   if (!note || note.kind !== 'journal') return false
   if (note.blocks.length !== 2) return false

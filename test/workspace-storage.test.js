@@ -64,14 +64,22 @@ test('readWorkspace devuelve diarios con kind singular para que sobrevivan a la 
         '---\ntype: context\nname: producto\n---\n\n# producto\n',
       ),
     }),
+    notes: new FakeDirectoryHandle({
+      'inicio-del-dia.md': new FakeFileHandle(
+        'inicio-del-dia.md',
+        '---\ntype: note\nname: Inicio del día\n---\n\n# Inicio del día\n\n- [ ] Revisar prioridades\n',
+      ),
+    }),
   })
 
   const notes = await readWorkspace(workspace)
   const journal = notes.find((note) => note.filename === '2026-07-14.md')
   const context = notes.find((note) => note.filename === 'producto.md')
+  const independent = notes.find((note) => note.filename === 'inicio-del-dia.md')
 
   assert.ok(journal)
   assert.equal(journal.kind, 'journal')
   assert.equal(context.kind, 'context')
+  assert.equal(independent.kind, 'note')
   assert.deepEqual(notes.workspaceManifest, { format: 'second-mind-v2' })
 })

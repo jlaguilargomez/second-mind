@@ -437,6 +437,7 @@ export function serializeNote(note) {
           description: note.description || '',
         }
       : {}),
+    ...(note.kind === 'note' ? { name: note.title } : {}),
     version: note.version || 1,
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,

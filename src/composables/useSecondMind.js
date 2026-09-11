@@ -23,6 +23,7 @@ import {
   cloneTemplateBlocks,
   createDefaultWorkspaceSettings,
   createJournalNote,
+  createIndependentNote,
   createTemplateEditorNote,
   extractTemplateBlocksFromNote,
   isBaseJournal,
@@ -96,6 +97,7 @@ function normalizeImportedNote(note) {
 function importIdentity(note) {
   if (note.kind === 'journal') return `journal:${note.date || note.filename}`
   if (note.kind === 'tag') return `tag:${note.title.toLocaleLowerCase()}`
+  if (note.kind === 'note') return `note:${note.filename || note.title.toLocaleLowerCase()}`
   return `context:${note.title.toLocaleLowerCase()}`
 }
 
@@ -118,6 +120,12 @@ function noteSnapshotFingerprint(note) {
 function cloneForStorage(value) {
   if (value == null) return value
   return JSON.parse(JSON.stringify(value))
+}
+
+function noteFilename(title, notes = [], currentId = null) {
+  const base = `${contextSlug(title) || 'nota'}.md`
+  if (!notes.some((note) => note.id !== currentId && note.filename === base)) return base
+  return `${contextSlug(title) || 'nota'}-${createId().slice(0, 8)}.md`
 }
 
 export function useSecondMind() {
@@ -165,9 +173,14 @@ export function useSecondMind() {
   )
   const contextNotes = computed(() => notes.value.filter((note) => note.kind === 'context'))
   const tagNotes = computed(() => notes.value.filter((note) => note.kind === 'tag'))
+  const independentNotes = computed(() =>
+    notes.value
+      .filter((note) => note.kind === 'note')
+      .sort((a, b) => a.title.localeCompare(b.title)),
+  )
   const allBlocks = computed(() =>
     notes.value.flatMap((note) =>
-      note.blocks
+      (note.kind === 'note' ? [] : note.blocks)
         .filter((block) => !(block.type === 'heading' && block.level === 1))
         .map((block) => ({
           ...block,
@@ -190,7 +203,7 @@ export function useSecondMind() {
   )
   const contextIndex = computed(() => {
     const index = new Map()
-    for (const note of notes.value) {
+    for (const note of notes.value.filter((item) => item.kind !== 'note')) {
       for (const block of note.blocks) {
         for (const name of block.contexts || extractContexts(block.content)) {
           const key = name.toLocaleLowerCase()
@@ -474,13 +487,13 @@ export function useSecondMind() {
     }
   }
 
-  async function persistNote(note, { immediate = false } = {}) {
+  async function persistNote(note, { immediate = false, removeStaleFile = null } = {}) {
     const execute = async () => {
       saveTimers.delete(note.id)
       const existing = notes.value.find((item) => item.id === note.id)
       const { saved, expectedVersion } = prepareNoteForSave(note, existing?.version || note.version)
       replaceNote(saved)
-      await savePreparedNote(saved, expectedVersion)
+      await savePreparedNote(saved, expectedVersion, { removeStaleFile })
     }
 
     const pendingSave = saveTimers.get(note.id)
@@ -547,6 +560,60 @@ export function useSecondMind() {
     activeNoteId.value = note.id
     selectedContext.value = name
     currentView.value = 'context'
+  }
+
+  async function openNote(id) {
+    const note = independentNotes.value.find((item) => item.id === id)
+    if (!note) return null
+    activeNoteId.value = note.id
+    selectedContext.value = null
+    currentView.value = 'notes'
+    return note
+  }
+
+  async function createNote(title = 'Nueva nota') {
+    const note = createIndependentNote(title)
+    note.filename = noteFilename(note.title, independentNotes.value)
+    note.markdown = serializeNote(note)
+    replaceNote(note)
+    await persistNote(note, { immediate: true })
+    await openNote(note.id)
+    return note
+  }
+
+  async function renameNote(id, title) {
+    const note = independentNotes.value.find((item) => item.id === id)
+    const nextTitle = String(title || '').trim()
+    if (!note || !nextTitle) return null
+    const renamed = normalizeNote({
+      ...note,
+      title: nextTitle,
+      filename: noteFilename(nextTitle, independentNotes.value, note.id),
+      blocks: note.blocks.map((block, index) =>
+        index === 0 && block.type === 'heading' && block.level === 1
+          ? { ...block, content: nextTitle }
+          : block,
+      ),
+      markdown: undefined,
+    })
+    replaceNote(renamed)
+    await persistNote(renamed, { immediate: true, removeStaleFile: note })
+    return renamed
+  }
+
+  async function deleteNote(id) {
+    const note = independentNotes.value.find((item) => item.id === id)
+    if (!note) return
+    clearTimeout(saveTimers.get(id))
+    saveTimers.delete(id)
+    await repository.deleteNote(id)
+    if (directoryHandle.value) {
+      try { await removeNote(directoryHandle.value, note) } catch (error) {
+        if (error.name !== 'NotFoundError') throw error
+      }
+    }
+    notes.value = notes.value.filter((item) => item.id !== id)
+    if (activeNoteId.value === id) await activateFirstAvailableNote({ createJournal: false })
   }
 
   async function activateFirstAvailableNote({ createJournal = true } = {}) {
@@ -952,7 +1019,7 @@ export function useSecondMind() {
     const date = sourcePath.match(/\d{4}-\d{2}-\d{2}/)?.[0] || null
     return normalizeNote({
       id: undefined,
-      kind: date ? 'journal' : undefined,
+      kind: date ? 'journal' : /(?:^|\/)notes\//i.test(sourcePath) ? 'note' : undefined,
       filename,
       date,
       markdown,
@@ -1119,6 +1186,7 @@ export function useSecondMind() {
     activeDailyTemplate,
     theme,
     journals,
+    independentNotes,
     activeNote,
     activeNoteId,
     currentView,
@@ -1141,6 +1209,10 @@ export function useSecondMind() {
     openDate,
     setView,
     openContext,
+    openNote,
+    createNote,
+    renameNote,
+    deleteNote,
     updateContext,
     renameContext,
     updateTag,

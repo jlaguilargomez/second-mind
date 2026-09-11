@@ -29,6 +29,8 @@ const mind = useSecondMind()
 const {
   notes,
   journals,
+  independentNotes,
+  activeNoteId,
   activeNote,
   currentView,
   selectedDate,
@@ -53,11 +55,13 @@ const {
 const searchQuery = ref('')
 const showSearch = ref(false)
 const showContextDialog = ref(false)
+const showNoteDialog = ref(false)
 const showTemplateDialog = ref(false)
 const showRecoveryDialog = ref(false)
 const showMobilePanel = ref(false)
 const newContextName = ref('')
 const newContextType = ref(DEFAULT_CONTEXT_TYPE)
+const newNoteTitle = ref('')
 const selectedTag = ref(null)
 const taskFilter = ref('open')
 const contextFilter = ref('all')
@@ -85,6 +89,7 @@ const assistantBaseUrlDraft = ref('')
 const assistantModelDraft = ref('')
 const assistantController = ref(null)
 const assistantElapsedSeconds = ref(0)
+const noteTitleDraft = ref('')
 const updateSW = registerSW({
   onNeedRefresh() {
     updateAvailable.value = true
@@ -103,6 +108,7 @@ const pageTitle = computed(() => {
       year: 'numeric',
     })
   }
+  if (currentView.value === 'notes') return activeNote.value?.title || 'Notas'
   if (currentView.value === 'context') return `@${selectedContext.value}`
   if (currentView.value === 'tasks') return 'Tareas'
   if (currentView.value === 'agenda') return 'Agenda'
@@ -327,6 +333,14 @@ watch(
   { immediate: true },
 )
 
+watch(
+  activeNote,
+  (note) => {
+    if (note?.kind === 'note') noteTitleDraft.value = note.title
+  },
+  { immediate: true },
+)
+
 function pluralize(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`
 }
@@ -374,9 +388,23 @@ async function copyCurrentSection() {
 }
 
 function navigate(view) {
+  if (view === 'notes') {
+    openNotes()
+    return
+  }
   mind.setView(view)
   showMobilePanel.value = false
   if (view === 'assistant' && assistantStatus.value === 'idle') void checkAssistant()
+}
+
+function openNotes() {
+  const firstNote = independentNotes.value[0]
+  if (firstNote) void mind.openNote(firstNote.id)
+  else {
+    activeNoteId.value = null
+    mind.setView('notes')
+  }
+  showMobilePanel.value = false
 }
 
 function createAssistantProvider() {
@@ -433,7 +461,7 @@ async function askAssistant(suggestedQuestion = '') {
     if (assistantStatus.value !== 'ready') return
   }
 
-  const context = buildAssistantContext(notes.value, {
+  const context = buildAssistantContext(notes.value.filter((note) => note.kind !== 'note'), {
     periodDays: assistantPeriod.value,
     today: isoDate(),
   })
@@ -572,6 +600,34 @@ function openFirstSearchResult() {
 function openDate(date) {
   mind.openDate(date)
   showMobilePanel.value = false
+}
+
+async function createIndependentNote() {
+  newNoteTitle.value = ''
+  showNoteDialog.value = true
+  showMobilePanel.value = false
+  await nextTick()
+  document.querySelector('.new-note-title')?.focus()
+}
+
+async function confirmCreateIndependentNote() {
+  const title = newNoteTitle.value.trim()
+  if (!title) return
+  await mind.createNote(title)
+  showNoteDialog.value = false
+  newNoteTitle.value = ''
+}
+
+async function saveIndependentNoteTitle() {
+  if (activeNote.value?.kind !== 'note') return
+  const saved = await mind.renameNote(activeNote.value.id, noteTitleDraft.value)
+  if (saved) noteTitleDraft.value = saved.title
+}
+
+async function deleteIndependentNote() {
+  if (!activeNote.value || activeNote.value.kind !== 'note') return
+  if (!window.confirm(`¿Eliminar la nota «${activeNote.value.title}»? Esta acción no se puede deshacer.`)) return
+  await mind.deleteNote(activeNote.value.id)
 }
 
 function resetTemplateDraft() {
@@ -795,7 +851,9 @@ async function importReflectDirectory() {
 async function exportWorkspace() {
   const zip = new JSZip()
   for (const note of notes.value) {
-    const directory = note.kind === 'context' ? 'contexts' : note.kind === 'tag' ? 'tags' : 'journals'
+    const directory = note.kind === 'note'
+      ? 'notes'
+      : note.kind === 'context' ? 'contexts' : note.kind === 'tag' ? 'tags' : 'journals'
     zip.file(`${directory}/${note.filename}`, serializeNote(note))
   }
   zip.file(
@@ -828,6 +886,7 @@ function handleShortcuts(event) {
   if (event.key === 'Escape') {
     showSearch.value = false
     showContextDialog.value = false
+    showNoteDialog.value = false
     if (showTemplateDialog.value) closeTemplateDialog()
     showMobilePanel.value = false
     reminderBlock.value = null
@@ -897,6 +956,10 @@ onBeforeUnmount(() => {
         <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')">
           <span>◷</span> Agenda
           <small>{{ reminders.length }}</small>
+        </button>
+        <button :class="{ active: currentView === 'notes' }" @click="openNotes">
+          <span>▤</span> Notas
+          <small>{{ independentNotes.length }}</small>
         </button>
         <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')">
           <span>◎</span> Seguimiento
@@ -1100,6 +1163,51 @@ onBeforeUnmount(() => {
               @open-context="openContext"
               @open-tag="openTag"
             />
+          </template>
+
+          <template v-else-if="currentView === 'notes'">
+            <div v-if="!activeNote" class="page-heading">
+              <p class="eyebrow">NOTAS INDEPENDIENTES</p>
+              <h1>Notas</h1>
+              <p>Listas y páginas permanentes, separadas de tus diarios.</p>
+            </div>
+
+            <div v-if="!activeNote" class="notes-directory">
+              <button class="primary-button" @click="createIndependentNote">＋ Nueva nota</button>
+              <div v-if="independentNotes.length" class="note-card-list">
+                <article v-for="note in independentNotes" :key="note.id" class="note-card">
+                  <button @click="mind.openNote(note.id)">
+                    <strong>{{ note.title }}</strong>
+                    <span>{{ note.excerpt || 'Sin contenido' }}</span>
+                    <small>{{ note.blocks.filter((block) => block.type === 'task' && !block.checked).length }} tareas pendientes</small>
+                  </button>
+                </article>
+              </div>
+              <div v-else class="empty-state">Aún no tienes notas independientes.</div>
+            </div>
+
+            <template v-else-if="activeNote.kind === 'note'">
+              <div class="note-editor-heading">
+                <div>
+                  <p class="eyebrow">NOTA INDEPENDIENTE</p>
+                  <input v-model="noteTitleDraft" aria-label="Título de la nota" @blur="saveIndependentNoteTitle" @keydown.enter.prevent="saveIndependentNoteTitle">
+                  <p>{{ activeNote.blocks.filter((block) => block.type !== 'heading' && block.content.trim()).length }} entradas · {{ activeNote.blocks.filter((block) => block.type === 'task' && !block.checked).length }} tareas pendientes</p>
+                </div>
+                <button class="delete-context-button" @click="deleteIndependentNote">Eliminar nota</button>
+              </div>
+              <BlockEditor
+                :note="activeNote"
+                :contexts="contextIndex"
+                :tags="tags"
+                @update-block="updateActiveBlock"
+                @add-block="addActiveBlock"
+                @remove-block="removeActiveBlock"
+                @change-type="changeActiveBlockType"
+                @edit-reminder="editReminder"
+                @open-context="openContext"
+                @open-tag="openTag"
+              />
+            </template>
           </template>
 
           <template v-else-if="currentView === 'assistant'">
@@ -1763,6 +1871,7 @@ onBeforeUnmount(() => {
       <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')"><span>✓</span>Tareas</button>
       <button @click="openSearch"><span>⌕</span>Buscar</button>
       <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')"><span>◷</span>Agenda</button>
+      <button :class="{ active: currentView === 'notes' }" @click="openNotes"><span>▤</span>Notas</button>
       <button :class="{ active: currentView === 'tags' }" @click="openTagsIndex"><span>#</span>Etiquetas</button>
       <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')"><span>◎</span>Seguimiento</button>
     </nav>
@@ -1826,6 +1935,18 @@ onBeforeUnmount(() => {
         <div>
           <button type="button" class="secondary-button" @click="showContextDialog = false">Cancelar</button>
           <button class="primary-button">Crear @camino</button>
+        </div>
+      </form>
+    </div>
+
+    <div v-if="showNoteDialog" class="modal-backdrop" @click.self="showNoteDialog = false">
+      <form class="small-modal" @submit.prevent="confirmCreateIndependentNote">
+        <p class="eyebrow">NUEVA NOTA</p>
+        <h2>Crea una lista o página permanente</h2>
+        <input v-model="newNoteTitle" class="new-note-title" autofocus placeholder="Inicio del día, Ideas…" />
+        <div>
+          <button type="button" class="secondary-button" @click="showNoteDialog = false">Cancelar</button>
+          <button class="primary-button" :disabled="!newNoteTitle.trim()">Crear nota</button>
         </div>
       </form>
     </div>

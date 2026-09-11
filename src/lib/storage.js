@@ -6,6 +6,7 @@ const DIRECTORY_NOTE_KIND = {
   journals: 'journal',
   contexts: 'context',
   tags: 'tag',
+  notes: 'note',
 }
 
 function openDb() {
@@ -73,7 +74,7 @@ async function readMarkdownDirectory(directory, kind) {
 export async function readWorkspace(root) {
   const notes = []
   notes.workspaceManifest = await readWorkspaceManifest(root)
-  for (const directoryName of ['journals', 'contexts', 'tags']) {
+  for (const directoryName of ['journals', 'contexts', 'tags', 'notes']) {
     try {
       const directory = await root.getDirectoryHandle(directoryName)
       notes.push(...(await readMarkdownDirectory(directory, DIRECTORY_NOTE_KIND[directoryName])))
@@ -121,7 +122,9 @@ export async function readMarkdownTree(root, prefix = '') {
 }
 
 export async function writeNote(root, note) {
-  const directoryName = note.kind === 'context'
+  const directoryName = note.kind === 'note'
+    ? 'notes'
+    : note.kind === 'context'
     ? 'contexts'
     : note.kind === 'tag'
       ? 'tags'
@@ -155,7 +158,9 @@ export async function writeWorkspaceManifest(root, manifest) {
 }
 
 export async function removeNote(root, note) {
-  const directoryName = note.kind === 'context'
+  const directoryName = note.kind === 'note'
+    ? 'notes'
+    : note.kind === 'context'
     ? 'contexts'
     : note.kind === 'tag'
       ? 'tags'
