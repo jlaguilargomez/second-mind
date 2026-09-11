@@ -39,6 +39,16 @@ Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área para conserva
 
 Las tareas admiten prioridad Base, Media o Alta. Base es el estado silencioso por defecto; Media y Alta se guardan como propiedades Markdown portables y se muestran con indicadores discretos.
 
+## Atajos del editor
+
+- `+` y espacio convierte la entrada en tarea; `-` y espacio la convierte en entrada.
+- `Tab` crea un subitem y `Shift + Tab` reduce su nivel.
+- `Ctrl/Cmd + .` abre las opciones del bloque.
+- `Ctrl/Cmd + ;` abre la fecha de una tarea.
+- `Ctrl/Cmd + Shift + P` cambia la prioridad de una tarea.
+- `Ctrl/Cmd + Shift + Retroceso` elimina el bloque completo. En un bloque vacío también se puede usar simplemente Retroceso.
+- `@` busca contextos y `#` busca proyectos/etiquetas mientras se escribe.
+
 Desde un día o una página de contexto se puede copiar la sección completa como Markdown limpio. La copia conserva tareas, subitems, recordatorios y prioridades, pero omite identificadores y timestamps internos.
 
 La vista de tareas admite filtros combinables por estado, contexto, prioridad y etiqueta, además de una acción para restablecer la selección.

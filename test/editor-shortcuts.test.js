@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { getCaptureShortcut } from '../src/lib/editorShortcuts.js'
+import { getBlockActionShortcut, getCaptureShortcut } from '../src/lib/editorShortcuts.js'
 
 test('convierte + espacio en tarea al inicio del bloque', () => {
   assert.deepEqual(
@@ -104,6 +104,73 @@ test('no activa conversion si hay sugerencias activas o seleccion expandida', ()
       selectionStart: 0,
       selectionEnd: 1,
       hasSuggestion: false,
+    }),
+    null,
+  )
+})
+
+test('abre las opciones del bloque con Ctrl o Cmd + punto', () => {
+  for (const modifier of [{ ctrlKey: true }, { metaKey: true }]) {
+    assert.equal(
+      getBlockActionShortcut({
+        key: '.',
+        code: 'Period',
+        blockType: 'log',
+        ...modifier,
+      }),
+      'toggle-menu',
+    )
+  }
+})
+
+test('las tareas exponen atajos para fecha y prioridad', () => {
+  assert.equal(
+    getBlockActionShortcut({
+      key: ';',
+      code: 'Semicolon',
+      ctrlKey: true,
+      blockType: 'task',
+    }),
+    'edit-reminder',
+  )
+  assert.equal(
+    getBlockActionShortcut({
+      key: 'P',
+      code: 'KeyP',
+      metaKey: true,
+      shiftKey: true,
+      blockType: 'task',
+    }),
+    'cycle-priority',
+  )
+  assert.equal(
+    getBlockActionShortcut({
+      key: ';',
+      code: 'Semicolon',
+      ctrlKey: true,
+      blockType: 'log',
+    }),
+    null,
+  )
+})
+
+test('elimina el bloque con Ctrl o Cmd + Shift + Retroceso', () => {
+  assert.equal(
+    getBlockActionShortcut({
+      key: 'Backspace',
+      code: 'Backspace',
+      ctrlKey: true,
+      shiftKey: true,
+      blockType: 'log',
+    }),
+    'remove-block',
+  )
+  assert.equal(
+    getBlockActionShortcut({
+      key: 'Backspace',
+      code: 'Backspace',
+      ctrlKey: true,
+      blockType: 'log',
     }),
     null,
   )

@@ -77,7 +77,7 @@ test('los prefijos de captura convierten el bloque sin interferir con el resto d
     'utf8',
   )
 
-  assert.match(editor, /import \{ getCaptureShortcut \} from '\.\.\/lib\/editorShortcuts'/)
+  assert.match(editor, /getCaptureShortcut,/)
   assert.match(editor, /function applyBlockShortcut\(block, shortcut\)/)
   assert.match(editor, /emit\('change-type', block\.id, shortcut\.type\)/)
   assert.match(editor, /content: shortcut\.content/)
@@ -124,21 +124,40 @@ test('Tab y Shift Tab crean y reducen niveles de subitems', async () => {
   assert.match(styles, /\.nested-block:not\(\.section-child\)/)
 })
 
-test('en móvil las opciones avanzadas se ocultan tras un disparador compacto', async () => {
+test('las opciones avanzadas permanecen ocultas tras un disparador compacto', async () => {
   const [editor, styles] = await Promise.all([
     readFile(new URL('../src/components/BlockEditor.vue', import.meta.url), 'utf8'),
     readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
   ])
 
-  assert.match(editor, /const mobileToolbarBlockId = ref\(null\)/)
-  assert.match(editor, /const isMobileViewport = ref\(false\)/)
-  assert.match(editor, /focusedBlockId === block\.id && !isMobileViewport/)
-  assert.match(editor, /focusedBlockId === block\.id && isMobileViewport/)
-  assert.match(editor, /class="mobile-toolbar-trigger"/)
-  assert.match(editor, />\s*<span>⋯<\/span>Opciones\s*</)
-  assert.match(editor, /class="mobile-toolbar-panel"/)
-  assert.match(editor, /class="mobile-toolbar-group mobile-toolbar-group-danger"/)
-  assert.match(styles, /\.mobile-toolbar-anchor\s*\{/)
-  assert.match(styles, /\.mobile-toolbar-panel\s*\{/)
-  assert.match(styles, /@media \(max-width: 760px\) \{[\s\S]*\.mobile-toolbar-anchor \{ display: flex; \}/)
+  assert.match(editor, /const openBlockMenuId = ref\(null\)/)
+  assert.match(editor, /v-if="focusedBlockId === block\.id"/)
+  assert.match(editor, /v-if="openBlockMenuId === block\.id"/)
+  assert.match(editor, /class="block-menu-trigger"/)
+  assert.match(editor, /class="block-menu-trigger-label">Opciones/)
+  assert.match(editor, /class="block-menu-panel"/)
+  assert.match(editor, /class="block-menu-group block-menu-danger"/)
+  assert.match(editor, /aria-keyshortcuts="Control\+\. Meta\+\."/)
+  assert.match(styles, /\.block-menu-anchor\s*\{/)
+  assert.match(styles, /\.block-menu-panel\s*\{/)
+  assert.match(styles, /\.block-menu-trigger-label \{ display: none;/)
+  assert.match(styles, /@media \(max-width: 760px\) \{[\s\S]*\.block-menu-trigger-label \{ display: inline;/)
+})
+
+test('todas las acciones del menú documentan y ejecutan un equivalente de teclado', async () => {
+  const editor = await readFile(
+    new URL('../src/components/BlockEditor.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(editor, /getBlockActionShortcut/)
+  assert.match(editor, /actionShortcut === 'toggle-menu'/)
+  assert.match(editor, /actionShortcut === 'edit-reminder'/)
+  assert.match(editor, /actionShortcut === 'cycle-priority'/)
+  assert.match(editor, /actionShortcut === 'remove-block'/)
+  assert.match(editor, /aria-keyshortcuts="Shift\+Tab"/)
+  assert.match(editor, /aria-keyshortcuts="Tab"/)
+  assert.match(editor, /aria-keyshortcuts="Control\+; Meta\+;"/)
+  assert.match(editor, /aria-keyshortcuts="Control\+Shift\+P Meta\+Shift\+P"/)
+  assert.match(editor, /aria-keyshortcuts="Control\+Shift\+Backspace Meta\+Shift\+Backspace"/)
 })
