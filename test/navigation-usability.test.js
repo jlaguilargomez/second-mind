@@ -2,10 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
-test('la navegación móvil ofrece búsqueda y describe correctamente el panel lateral', async () => {
+test('la navegación móvil ofrece búsqueda desde Más y describe correctamente el panel lateral', async () => {
   const app = await readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
 
-  assert.match(app, />⌕<\/span>Buscar<\/button>/)
+  assert.match(app, /class="mobile-more-grid"/)
+  assert.match(app, /<button @click="openSearch"><span>⌕<\/span><b>Buscar<\/b><\/button>/)
+  assert.match(app, /aria-controls="mobile-more-menu"/)
   assert.match(app, /aria-label="Calendario y próximos recordatorios"/)
   assert.match(app, /class="mobile-panel-backdrop"/)
 })
@@ -45,9 +47,9 @@ test('los controles comparten un foco accesible y coherente con la identidad vis
   const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
 
   assert.match(styles, /:focus-visible/)
-  assert.match(styles, /outline:\s*2px solid #6f9185/)
+  assert.match(styles, /outline:\s*2px solid var\(--focus-ring\)/)
   assert.match(styles, /\.task-toggle:focus-visible/)
-  assert.match(styles, /box-shadow:\s*0 0 0 2px var\(--paper\), 0 0 0 4px #6f9185/)
+  assert.match(styles, /box-shadow:\s*0 0 0 2px var\(--paper\), 0 0 0 4px var\(--focus-ring\)/)
   assert.doesNotMatch(styles, /outline:\s*none\s*!important/)
 })
 
@@ -229,14 +231,27 @@ test('la sección de notas independientes tiene listado, editor y navegación m�
 test('la interfaz móvil usa iconos legibles y objetivos táctiles amplios', async () => {
   const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
 
-  assert.match(styles, /\.mobile-menu-button\s*\{[\s\S]*width:\s*40px;[\s\S]*font-size:\s*21px;/)
+  assert.match(styles, /\.mobile-menu-button\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;[\s\S]*font-size:\s*21px;/)
   assert.match(styles, /\.topbar\s*\{[\s\S]*gap:\s*8px;[\s\S]*overflow:\s*hidden;/)
   assert.match(styles, /\.breadcrumbs\s*\{[\s\S]*max-width:\s*min\(38vw,\s*142px\);/)
   assert.match(styles, /\.top-actions\s*\{[\s\S]*max-width:\s*calc\(100vw - 190px\);[\s\S]*overflow-x:\s*auto;/)
-  assert.match(styles, /\.top-actions \.icon-button\s*\{[\s\S]*width:\s*38px;[\s\S]*flex:\s*0 0 auto;[\s\S]*font-size:\s*23px;/)
+  assert.match(styles, /\.top-actions \.icon-button\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;[\s\S]*flex:\s*0 0 auto;[\s\S]*font-size:\s*23px;/)
   assert.match(styles, /@media \(max-width:\s*390px\)/)
-  assert.match(styles, /\.mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(7, 1fr\);/)
-  assert.match(styles, /\.mobile-nav button span\s*\{\s*font-size:\s*24px;/)
+  assert.match(styles, /\.mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(5, 1fr\);/)
+  assert.match(styles, /\.mobile-nav button span\s*\{\s*font-size:\s*22px;/)
+  assert.match(styles, /\.mobile-nav button\s*\{[\s\S]*font-size:\s*12px;/)
   assert.match(styles, /\.task-toggle\s*\{\s*width:\s*24px;\s*height:\s*24px;/)
   assert.match(styles, /\.block-kind-button\s*\{\s*width:\s*26px;\s*height:\s*26px;/)
+  assert.match(styles, /\.task-toggle::before, \.block-kind-button::before\s*\{[\s\S]*inset:\s*-9px;/)
+})
+
+test('el modo oscuro usa tokens semánticos para texto, controles y estados', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
+
+  assert.match(styles, /--surface-control:\s*#192638/)
+  assert.match(styles, /--text-primary:\s*#f2f7fb/)
+  assert.match(styles, /--text-muted:\s*#98aabd/)
+  assert.match(styles, /--danger:\s*#ff9eaa/)
+  assert.match(styles, /\.task-filter-selects select\s*\{[\s\S]*color:\s*var\(--text-primary\);[\s\S]*background-color:\s*var\(--surface-control\);/)
+  assert.match(styles, /\.priority-high\s*\{\s*color:\s*var\(--danger\);\s*background:\s*var\(--danger-soft\);/)
 })

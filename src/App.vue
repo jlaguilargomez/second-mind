@@ -59,6 +59,7 @@ const showNoteDialog = ref(false)
 const showTemplateDialog = ref(false)
 const showRecoveryDialog = ref(false)
 const showMobilePanel = ref(false)
+const showMobileMore = ref(false)
 const newContextName = ref('')
 const newContextType = ref(DEFAULT_CONTEXT_TYPE)
 const newNoteTitle = ref('')
@@ -119,6 +120,13 @@ const pageTitle = computed(() => {
   if (currentView.value === 'tags') return 'Etiquetas / Proyectos'
   return 'Second Mind'
 })
+const compactJournalTitle = computed(() =>
+  new Date(`${selectedDate.value}T12:00:00`).toLocaleDateString(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+  }),
+)
 
 const filteredTasks = computed(() =>
   tasks.value.filter((task) => {
@@ -287,6 +295,9 @@ const currentDailyTemplateName = computed(() => activeDailyTemplate.value?.name 
 const themeToggleLabel = computed(() =>
   theme.value === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
 )
+const mobileMoreActive = computed(() =>
+  ['assistant', 'context', 'contexts', 'tags', 'tracking'].includes(currentView.value),
+)
 const assistantSettings = computed(() => mind.workspaceSettings.value.assistant)
 const assistantSuggestions = [
   '¿Qué debería hacer hoy y por qué?',
@@ -394,6 +405,7 @@ function navigate(view) {
   }
   mind.setView(view)
   showMobilePanel.value = false
+  showMobileMore.value = false
   if (view === 'assistant' && assistantStatus.value === 'idle') void checkAssistant()
 }
 
@@ -405,6 +417,7 @@ function openNotes() {
     mind.setView('notes')
   }
   showMobilePanel.value = false
+  showMobileMore.value = false
 }
 
 function createAssistantProvider() {
@@ -548,6 +561,7 @@ function openContext(name) {
   selectedTag.value = null
   mind.openContext(name)
   showMobilePanel.value = false
+  showMobileMore.value = false
 }
 
 function openTag(name) {
@@ -576,6 +590,7 @@ function openTask(block) {
 function openSearch() {
   showSearch.value = true
   showMobilePanel.value = false
+  showMobileMore.value = false
   nextTick(() => document.querySelector('.search-input')?.focus())
 }
 
@@ -600,6 +615,12 @@ function openFirstSearchResult() {
 function openDate(date) {
   mind.openDate(date)
   showMobilePanel.value = false
+  showMobileMore.value = false
+}
+
+function toggleMobileMore() {
+  showMobilePanel.value = false
+  showMobileMore.value = !showMobileMore.value
 }
 
 async function createIndependentNote() {
@@ -876,7 +897,7 @@ function handleShortcuts(event) {
   }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j') {
     event.preventDefault()
-    mind.openDate(isoDate())
+    openDate(isoDate())
   }
   if (event.key === 'Escape') {
     showSearch.value = false
@@ -884,6 +905,7 @@ function handleShortcuts(event) {
     showNoteDialog.value = false
     if (showTemplateDialog.value) closeTemplateDialog()
     showMobilePanel.value = false
+    showMobileMore.value = false
     reminderBlock.value = null
   }
 }
@@ -1047,7 +1069,7 @@ onBeforeUnmount(() => {
           aria-label="Calendario y próximos recordatorios"
           :aria-expanded="showMobilePanel"
           title="Calendario y próximos recordatorios"
-          @click="showMobilePanel = !showMobilePanel"
+          @click="showMobileMore = false; showMobilePanel = !showMobilePanel"
         >▦</button>
         <div class="breadcrumbs">
           <span>{{ currentView }}</span><b>/</b><strong>{{ pageTitle }}</strong>
@@ -1122,7 +1144,10 @@ onBeforeUnmount(() => {
           <template v-if="currentView === 'journal' && activeNote">
             <div class="page-heading">
               <p class="eyebrow">DIARIO</p>
-              <h1>{{ pageTitle }}</h1>
+              <h1>
+                <span class="desktop-page-title">{{ pageTitle }}</span>
+                <span class="mobile-page-title">{{ compactJournalTitle }}</span>
+              </h1>
               <p>
                 {{ pluralize(journalEntryCount, 'entrada') }} ·
                 {{ pluralize(journalContextCount, 'contexto') }}
@@ -1849,14 +1874,44 @@ onBeforeUnmount(() => {
       @click="showMobilePanel = false"
     ></button>
 
-    <nav class="mobile-nav">
-      <button :class="{ active: currentView === 'journal' }" @click="mind.openDate(isoDate())"><span>✎</span>Hoy</button>
+    <button
+      v-if="showMobileMore"
+      class="mobile-more-backdrop"
+      aria-label="Cerrar el menú Más"
+      @click="showMobileMore = false"
+    ></button>
+
+    <section
+      v-if="showMobileMore"
+      id="mobile-more-menu"
+      class="mobile-more-sheet"
+      role="dialog"
+      aria-label="Más secciones"
+    >
+      <div class="mobile-more-heading">
+        <strong>Más secciones</strong>
+        <button aria-label="Cerrar el menú Más" @click="showMobileMore = false">×</button>
+      </div>
+      <div class="mobile-more-grid">
+        <button @click="openSearch"><span>⌕</span><b>Buscar</b></button>
+        <button :class="{ active: currentView === 'tags' }" @click="openTagsIndex"><span>#</span><b>Etiquetas</b></button>
+        <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')"><span>◎</span><b>Seguimiento</b></button>
+        <button :class="{ active: currentView === 'assistant' }" @click="navigate('assistant')"><span>✦</span><b>Asistente</b></button>
+        <button :class="{ active: currentView === 'contexts' || currentView === 'context' }" @click="navigate('contexts')"><span>@</span><b>Contextos</b></button>
+      </div>
+    </section>
+
+    <nav class="mobile-nav" aria-label="Navegación principal">
+      <button :class="{ active: currentView === 'journal' }" @click="openDate(isoDate())"><span>✎</span>Hoy</button>
       <button :class="{ active: currentView === 'tasks' }" @click="navigate('tasks')"><span>✓</span>Tareas</button>
-      <button @click="openSearch"><span>⌕</span>Buscar</button>
       <button :class="{ active: currentView === 'agenda' }" @click="navigate('agenda')"><span>◷</span>Agenda</button>
       <button :class="{ active: currentView === 'notes' }" @click="openNotes"><span>▤</span>Notas</button>
-      <button :class="{ active: currentView === 'tags' }" @click="openTagsIndex"><span>#</span>Etiquetas</button>
-      <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')"><span>◎</span>Seguimiento</button>
+      <button
+        :class="{ active: mobileMoreActive || showMobileMore }"
+        :aria-expanded="showMobileMore"
+        aria-controls="mobile-more-menu"
+        @click="toggleMobileMore"
+      ><span>•••</span>Más</button>
     </nav>
 
     <div v-if="showSearch" class="modal-backdrop" @click.self="showSearch = false">
