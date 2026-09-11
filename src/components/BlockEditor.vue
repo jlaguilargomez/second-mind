@@ -39,7 +39,6 @@ const blockTypeDefinitions = {
 const blockTypes = [
   { value: 'log', ...blockTypeDefinitions.log },
   { value: 'task', ...blockTypeDefinitions.task },
-  { value: 'heading', ...blockTypeDefinitions.heading },
 ]
 const indentableTypes = new Set(['log', 'task'])
 const priorityOptions = {
@@ -549,7 +548,7 @@ onBeforeUnmount(() => {
     >
       <span>＋</span>
       <strong>Añadir entrada</strong>
-      <small>Intro para seguir · + tarea · - entrada · &gt; título</small>
+      <small>Intro para seguir · + tarea · - entrada</small>
     </button>
   </div>
 </template>

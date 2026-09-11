@@ -11,6 +11,10 @@ export function createDefaultWorkspaceSettings() {
     dailyTemplates: [],
     activeDailyTemplateId: null,
     theme: 'dark',
+    assistant: {
+      baseUrl: 'http://localhost:11434',
+      model: 'qwen3:4b',
+    },
   }
 }
 
@@ -56,6 +60,10 @@ export function normalizeWorkspaceSettings(settings = {}) {
     || dailyTemplates[0]?.id
     || null
   const theme = settings.theme === 'light' ? 'light' : 'dark'
+  const assistant = {
+    baseUrl: String(settings.assistant?.baseUrl || 'http://localhost:11434').trim().replace(/\/+$/, ''),
+    model: String(settings.assistant?.model || 'qwen3:4b').trim() || 'qwen3:4b',
+  }
 
   return {
     dailyTemplates: dailyTemplates.map((template) => ({
@@ -64,6 +72,7 @@ export function normalizeWorkspaceSettings(settings = {}) {
     })),
     activeDailyTemplateId,
     theme,
+    assistant,
   }
 }
 

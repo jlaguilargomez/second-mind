@@ -20,6 +20,9 @@ import {
   sortContextBlocksByDate,
 } from './lib/markdown'
 import { isTrackingTask } from './lib/taskClassification'
+import { ASSISTANT_PERIODS, buildAssistantContext } from './lib/assistantContext'
+import { OllamaProvider } from './ai/OllamaProvider'
+import { ViteOllamaProvider } from './ai/ViteOllamaProvider'
 import { contextTypes, useSecondMind } from './composables/useSecondMind'
 
 const mind = useSecondMind()
@@ -72,6 +75,16 @@ const tagDescriptionDraft = ref('')
 const templateDraftNote = ref(null)
 const templateNameDraft = ref('')
 const contextRenameDraft = ref('')
+const assistantPeriod = ref(14)
+const assistantQuestion = ref('')
+const assistantMessages = ref([])
+const assistantStatus = ref('idle')
+const assistantError = ref('')
+const assistantContext = ref(null)
+const assistantBaseUrlDraft = ref('')
+const assistantModelDraft = ref('')
+const assistantController = ref(null)
+const assistantElapsedSeconds = ref(0)
 const updateSW = registerSW({
   onNeedRefresh() {
     updateAvailable.value = true
@@ -79,6 +92,7 @@ const updateSW = registerSW({
 })
 let notificationTimer
 let copyStateTimer
+let assistantElapsedTimer
 
 const pageTitle = computed(() => {
   if (currentView.value === 'journal') {
@@ -93,6 +107,7 @@ const pageTitle = computed(() => {
   if (currentView.value === 'tasks') return 'Tareas'
   if (currentView.value === 'agenda') return 'Agenda'
   if (currentView.value === 'tracking') return 'Seguimiento'
+  if (currentView.value === 'assistant') return 'Asistente'
   if (currentView.value === 'contexts') return 'Contextos'
   if (currentView.value === 'tags' && selectedTag.value) return `#${selectedTag.value}`
   if (currentView.value === 'tags') return 'Etiquetas / Proyectos'
@@ -266,6 +281,18 @@ const currentDailyTemplateName = computed(() => activeDailyTemplate.value?.name 
 const themeToggleLabel = computed(() =>
   theme.value === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
 )
+const assistantSettings = computed(() => mind.workspaceSettings.value.assistant)
+const assistantSuggestions = [
+  '¿Qué debería hacer hoy y por qué?',
+  '¿Qué tareas tengo esperando o delegadas?',
+  '¿Qué tareas parecen estancadas?',
+  'Agrupa mis próximas acciones por contexto.',
+]
+const assistantContextSummary = computed(() => {
+  const counts = assistantContext.value?.counts
+  if (!counts) return ''
+  return `${counts.included} fuentes · ${counts.openTasks} tareas abiertas · ${counts.tracking} seguimientos`
+})
 
 watch(
   theme,
@@ -287,6 +314,15 @@ watch(
   activeContext,
   (context) => {
     contextRenameDraft.value = context?.name || ''
+  },
+  { immediate: true },
+)
+
+watch(
+  assistantSettings,
+  (settings) => {
+    assistantBaseUrlDraft.value = settings.baseUrl
+    assistantModelDraft.value = settings.model
   },
   { immediate: true },
 )
@@ -340,6 +376,144 @@ async function copyCurrentSection() {
 function navigate(view) {
   mind.setView(view)
   showMobilePanel.value = false
+  if (view === 'assistant' && assistantStatus.value === 'idle') void checkAssistant()
+}
+
+function createAssistantProvider() {
+  if (import.meta.env.DEV && import.meta.hot) {
+    return new ViteOllamaProvider({ model: assistantSettings.value.model })
+  }
+  const configuredUrl = assistantSettings.value.baseUrl
+  const isLocalDevelopment = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  return new OllamaProvider({
+    ...assistantSettings.value,
+    // Vite reenvía esta ruta al servicio Ollama del equipo. Forzarla en
+    // desarrollo evita que navegadores aislados bloqueen el puerto 11434.
+    baseUrl: isLocalDevelopment ? '/assistant-api' : configuredUrl,
+  })
+}
+
+function assistantErrorMessage(error) {
+  if (error?.name === 'AbortError') return ''
+  if (error?.name === 'TimeoutError') return 'Ollama ha tardado demasiado en responder.'
+  if (error instanceof TypeError) {
+    return 'No se puede conectar con Ollama. Comprueba que está iniciado y permite el origen de esta aplicación.'
+  }
+  return error?.message || 'No se pudo conectar con Ollama.'
+}
+
+async function checkAssistant() {
+  assistantStatus.value = 'checking'
+  assistantError.value = ''
+  try {
+    const result = await createAssistantProvider().checkAvailability()
+    assistantStatus.value = result.available ? 'ready' : 'model-missing'
+    if (!result.available) {
+      assistantError.value = `Ollama está activo, pero falta el modelo ${result.model}.`
+    }
+  } catch (error) {
+    assistantStatus.value = 'error'
+    assistantError.value = assistantErrorMessage(error)
+  }
+}
+
+async function saveAssistantConfiguration() {
+  await mind.setAssistantSettings({
+    baseUrl: assistantBaseUrlDraft.value,
+    model: assistantModelDraft.value,
+  })
+  await checkAssistant()
+}
+
+async function askAssistant(suggestedQuestion = '') {
+  const question = String(suggestedQuestion || assistantQuestion.value).trim()
+  if (!question || assistantStatus.value === 'thinking') return
+  if (assistantStatus.value !== 'ready') {
+    await checkAssistant()
+    if (assistantStatus.value !== 'ready') return
+  }
+
+  const context = buildAssistantContext(notes.value, {
+    periodDays: assistantPeriod.value,
+    today: isoDate(),
+  })
+  assistantContext.value = context
+  assistantMessages.value.push({ role: 'user', content: question })
+  assistantQuestion.value = ''
+  assistantStatus.value = 'thinking'
+  startAssistantTimer()
+  assistantError.value = ''
+  const controller = new AbortController()
+  assistantController.value = controller
+  try {
+    const conversation = assistantMessages.value.slice(0, -1).map((message) => ({
+      role: message.role,
+      content: message.content,
+    }))
+    const answer = await createAssistantProvider().generateAnswer({
+      question,
+      context,
+      conversation,
+      signal: controller.signal,
+    })
+    assistantMessages.value.push({
+      role: 'assistant',
+      content: answer.text,
+      references: answer.references,
+      insufficientEvidence: answer.insufficientEvidence,
+    })
+    assistantStatus.value = 'ready'
+  } catch (error) {
+    if (error?.name === 'AbortError') assistantStatus.value = 'ready'
+    else {
+      assistantStatus.value = 'ready'
+      assistantError.value = assistantErrorMessage(error)
+    }
+  } finally {
+    stopAssistantTimer()
+    if (assistantController.value === controller) assistantController.value = null
+  }
+}
+
+function cancelAssistant() {
+  assistantController.value?.abort(new DOMException('Cancelado', 'AbortError'))
+}
+
+function startAssistantTimer() {
+  window.clearInterval(assistantElapsedTimer)
+  const startedAt = Date.now()
+  assistantElapsedSeconds.value = 0
+  assistantElapsedTimer = window.setInterval(() => {
+    assistantElapsedSeconds.value = Math.floor((Date.now() - startedAt) / 1000)
+  }, 1000)
+}
+
+function stopAssistantTimer() {
+  window.clearInterval(assistantElapsedTimer)
+  assistantElapsedTimer = undefined
+}
+
+function clearAssistantConversation() {
+  assistantMessages.value = []
+  assistantContext.value = null
+  assistantError.value = ''
+}
+
+async function openAssistantReference(reference) {
+  const note = notes.value.find((item) => item.id === reference.noteId)
+  if (!note) return
+  if (note.kind === 'journal' && note.date) {
+    mind.openBlock({ noteId: note.id, noteDate: note.date })
+  } else if (note.kind === 'context') {
+    await mind.openContext(note.title)
+  }
+  await nextTick()
+  {
+    document.querySelector(`[data-block-id="${reference.blockId}"]`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+  }
 }
 
 function openContext(name) {
@@ -683,6 +857,8 @@ function flushPendingSavesOnVisibilityChange() {
 }
 
 onBeforeUnmount(() => {
+  cancelAssistant()
+  stopAssistantTimer()
   window.removeEventListener('keydown', handleShortcuts)
   window.removeEventListener('online', updateOnlineState)
   window.removeEventListener('offline', updateOnlineState)
@@ -725,6 +901,9 @@ onBeforeUnmount(() => {
         <button :class="{ active: currentView === 'tracking' }" @click="navigate('tracking')">
           <span>◎</span> Seguimiento
           <small>{{ waitingTasks.length }}</small>
+        </button>
+        <button :class="{ active: currentView === 'assistant' }" @click="navigate('assistant')">
+          <span>✦</span> Asistente
         </button>
         <button :class="{ active: currentView === 'contexts' }" @click="navigate('contexts')">
           <span>@</span> Contextos
@@ -829,6 +1008,12 @@ onBeforeUnmount(() => {
           <span class="save-state">{{ syncState }}</span>
           <span class="save-detail">{{ workspacePersistenceLabel }}</span>
           <button
+            class="icon-button"
+            aria-label="Abrir asistente"
+            title="Abrir asistente"
+            @click="navigate('assistant')"
+          >✦</button>
+          <button
             class="icon-button theme-toggle-button"
             :aria-label="themeToggleLabel"
             :title="themeToggleLabel"
@@ -915,6 +1100,153 @@ onBeforeUnmount(() => {
               @open-context="openContext"
               @open-tag="openTag"
             />
+          </template>
+
+          <template v-else-if="currentView === 'assistant'">
+            <div class="page-heading assistant-heading">
+              <p class="eyebrow">SECRETARIO PERSONAL LOCAL</p>
+              <h1>Asistente</h1>
+              <p>Consulta tus diarios y tareas con un modelo Ollama que se ejecuta en este ordenador.</p>
+            </div>
+
+            <section class="assistant-controls" aria-label="Configuración del contexto">
+              <label>
+                <span>Periodo de diarios</span>
+                <select v-model.number="assistantPeriod" :disabled="assistantStatus === 'thinking'">
+                  <option v-for="period in ASSISTANT_PERIODS" :key="period" :value="period">
+                    Últimos {{ period }} días
+                  </option>
+                </select>
+              </label>
+              <span v-if="assistantContextSummary" class="assistant-context-summary">
+                {{ assistantContextSummary }}
+              </span>
+              <button
+                v-if="assistantMessages.length"
+                type="button"
+                class="secondary-button"
+                :disabled="assistantStatus === 'thinking'"
+                @click="clearAssistantConversation"
+              >Nueva conversación</button>
+            </section>
+
+            <section
+              v-if="!['ready', 'thinking'].includes(assistantStatus)"
+              class="assistant-setup"
+            >
+              <div class="assistant-status-row">
+                <span class="assistant-status-dot" :class="assistantStatus"></span>
+                <strong>
+                  {{
+                    assistantStatus === 'checking'
+                      ? 'Comprobando Ollama…'
+                      : assistantStatus === 'model-missing'
+                        ? 'Falta el modelo configurado'
+                        : 'Ollama no está conectado'
+                  }}
+                </strong>
+              </div>
+              <p v-if="assistantError" class="error">{{ assistantError }}</p>
+              <ol>
+                <li>Instala y abre Ollama en este ordenador.</li>
+                <li>Ejecuta <code>ollama pull {{ assistantModelDraft || 'qwen3:4b' }}</code>.</li>
+                <li>
+                  Si usas la versión publicada, permite su origen mediante
+                  <code>OLLAMA_ORIGINS</code> y reinicia Ollama.
+                </li>
+              </ol>
+              <div class="assistant-settings">
+                <label>
+                  <span>Servidor local</span>
+                  <input v-model.trim="assistantBaseUrlDraft" type="url" placeholder="http://localhost:11434">
+                </label>
+                <label>
+                  <span>Modelo</span>
+                  <input v-model.trim="assistantModelDraft" placeholder="qwen3:4b">
+                </label>
+              </div>
+              <div class="assistant-setup-actions">
+                <button class="primary-button" :disabled="assistantStatus === 'checking'" @click="saveAssistantConfiguration">
+                  Guardar y comprobar
+                </button>
+                <button class="secondary-button" :disabled="assistantStatus === 'checking'" @click="checkAssistant">
+                  Volver a comprobar
+                </button>
+              </div>
+            </section>
+
+            <section v-else class="assistant-chat" aria-live="polite">
+              <div v-if="!assistantMessages.length" class="assistant-welcome">
+                <span>✦</span>
+                <h2>¿Qué necesitas ordenar?</h2>
+                <p>Analizaré tareas abiertas de cualquier fecha y las entradas del periodo seleccionado.</p>
+                <div class="assistant-suggestions">
+                  <button
+                    v-for="suggestion in assistantSuggestions"
+                    :key="suggestion"
+                    :disabled="assistantStatus === 'thinking'"
+                    @click="askAssistant(suggestion)"
+                  >{{ suggestion }}</button>
+                </div>
+              </div>
+
+              <div v-if="assistantMessages.length" class="assistant-messages">
+                <article
+                  v-for="(message, index) in assistantMessages"
+                  :key="index"
+                  class="assistant-message"
+                  :class="message.role"
+                >
+                  <small>{{ message.role === 'user' ? 'Tú' : 'Asistente' }}</small>
+                  <p>{{ message.content }}</p>
+                  <p v-if="message.insufficientEvidence" class="assistant-evidence-warning">
+                    La información disponible no permite una conclusión completa.
+                  </p>
+                  <div v-if="message.references?.length" class="assistant-references">
+                    <span>Fuentes</span>
+                    <button
+                      v-for="reference in message.references"
+                      :key="`${reference.noteId}:${reference.blockId}`"
+                      @click="openAssistantReference(reference)"
+                    >
+                      {{ reference.date || reference.title }} · {{ reference.content.slice(0, 54) }}
+                    </button>
+                  </div>
+                </article>
+                <article v-if="assistantStatus === 'thinking'" class="assistant-message assistant thinking">
+                  <small>Asistente</small>
+                  <p>
+                    Revisando {{ assistantContext?.counts.included || 0 }} fuentes ·
+                    {{ assistantElapsedSeconds }} s
+                  </p>
+                  <small class="assistant-processing-hint">
+                    La primera respuesta del modelo local puede tardar hasta un minuto.
+                  </small>
+                </article>
+              </div>
+
+              <p v-if="assistantError" class="error assistant-chat-error">{{ assistantError }}</p>
+              <form class="assistant-composer" @submit.prevent="askAssistant()">
+                <textarea
+                  v-model="assistantQuestion"
+                  rows="2"
+                  :disabled="assistantStatus === 'thinking'"
+                  placeholder="Pregunta por prioridades, seguimientos, proyectos o contextos…"
+                  @keydown.meta.enter.prevent="askAssistant()"
+                  @keydown.ctrl.enter.prevent="askAssistant()"
+                ></textarea>
+                <button
+                  v-if="assistantStatus !== 'thinking'"
+                  type="submit"
+                  class="primary-button"
+                  :disabled="!assistantQuestion.trim()"
+                >Preguntar</button>
+                <button v-else type="button" class="secondary-button" @click="cancelAssistant">
+                  Cancelar
+                </button>
+              </form>
+              <p class="assistant-privacy">Procesamiento local · La conversación no se guarda.</p>
+            </section>
           </template>
 
           <template v-else-if="currentView === 'tasks'">

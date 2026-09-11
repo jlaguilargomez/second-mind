@@ -39,24 +39,6 @@ test('convierte - espacio en entrada al inicio del bloque', () => {
   )
 })
 
-test('convierte > espacio en titulo al inicio del bloque', () => {
-  assert.deepEqual(
-    getCaptureShortcut({
-      key: ' ',
-      value: '>',
-      selectionStart: 1,
-      selectionEnd: 1,
-      hasSuggestion: false,
-    }),
-    {
-      marker: '>',
-      type: 'heading',
-      content: '',
-      patch: { level: 2 },
-    },
-  )
-})
-
 test('no activa conversion para etiquetas o texto ordinario', () => {
   assert.equal(
     getCaptureShortcut({
@@ -64,6 +46,17 @@ test('no activa conversion para etiquetas o texto ordinario', () => {
       value: '#proyecto',
       selectionStart: 9,
       selectionEnd: 9,
+      hasSuggestion: false,
+    }),
+    null,
+  )
+
+  assert.equal(
+    getCaptureShortcut({
+      key: ' ',
+      value: '>',
+      selectionStart: 1,
+      selectionEnd: 1,
       hasSuggestion: false,
     }),
     null,

@@ -8,13 +8,15 @@ test('el editor expone tipos de bloque y una acción clara para añadir entradas
     'utf8',
   )
 
-  for (const label of ['Entrada', 'Tarea', 'Título']) {
+  for (const label of ['Entrada', 'Tarea']) {
     assert.match(editor, new RegExp(`label: '${label}'`))
   }
+  assert.doesNotMatch(editor, /value: 'heading'/)
   assert.doesNotMatch(editor, /\{ value: 'text',/)
   assert.match(editor, /class="add-entry-button"/)
   assert.match(editor, /Añadir entrada/)
-  assert.match(editor, /Intro para seguir · \+ tarea · - entrada · &gt; título/)
+  assert.match(editor, /Intro para seguir · \+ tarea · - entrada/)
+  assert.doesNotMatch(editor, /&gt; título/)
 })
 
 test('las tareas cambian prioridad con un único control contextual', async () => {

@@ -47,6 +47,26 @@ Las listas de contextos y etiquetas tienen desplazamiento independiente en el la
 
 La interfaz móvil utiliza iconos y objetivos táctiles ampliados en la cabecera, navegación inferior, tareas y acciones de bloque.
 
+## Asistente local
+
+La vista **Asistente** consulta tareas y diarios recientes mediante
+[Ollama](https://ollama.com/) ejecutado en el mismo ordenador. No usa servicios
+externos, no modifica notas y no guarda la conversación.
+
+Configuración inicial:
+
+```bash
+ollama pull qwen3:4b
+```
+
+Después, abre Ollama y entra en **Asistente** para comprobar la conexión. Si la
+aplicación se sirve desde otro origen, autorízalo en `OLLAMA_ORIGINS` antes de
+iniciar Ollama.
+
+Durante el desarrollo, Vite reenvía internamente las peticiones de `/assistant-api` al
+servicio local para que el asistente también funcione en navegadores con
+aislamiento de puertos.
+
 Cada bloque conserva un identificador estable y sus propiedades dentro del propio Markdown:
 
 ```md
