@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import RichText from './RichText.vue'
 import { formatReminderDate } from '../lib/markdown'
 import {
@@ -12,6 +12,7 @@ const props = defineProps({
   note: { type: Object, required: true },
   contexts: { type: Array, default: () => [] },
   tags: { type: Array, default: () => [] },
+  readOnly: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -66,6 +67,7 @@ function resize(event) {
 }
 
 function focusBlock(blockId) {
+  if (props.readOnly) return
   if (focusedBlockId.value !== blockId) openBlockMenuId.value = null
   focusedBlockId.value = blockId
   nextTick(() => {
@@ -89,6 +91,7 @@ function handleBlur(blockId) {
 }
 
 function handleInput(block, event) {
+  if (props.readOnly) return
   resize(event)
   const value = event.target.value
   emit('update-block', block.id, { content: value })
@@ -115,6 +118,7 @@ function handleInput(block, event) {
 }
 
 function addBlockAfter(blockId, type = 'log', content = '', options = {}) {
+  if (props.readOnly) return
   const existingIds = new Set(props.note.blocks.map((block) => block.id))
   emit('add-block', blockId, type, content, options)
   nextTick(() => {
@@ -124,12 +128,14 @@ function addBlockAfter(blockId, type = 'log', content = '', options = {}) {
 }
 
 function changeType(block, type) {
+  if (props.readOnly) return
   emit('change-type', block.id, type)
   openBlockMenuId.value = null
   focusBlock(block.id)
 }
 
 function applyBlockShortcut(block, shortcut) {
+  if (props.readOnly) return
   emit('change-type', block.id, shortcut.type)
   emit('update-block', block.id, {
     content: shortcut.content,
@@ -145,6 +151,7 @@ function applyBlockShortcut(block, shortcut) {
 }
 
 function cyclePriority(block) {
+  if (props.readOnly) return
   const priorities = ['base', 'medium', 'high']
   const currentIndex = priorities.indexOf(block.priority || 'base')
   emit('update-block', block.id, {
@@ -155,6 +162,7 @@ function cyclePriority(block) {
 }
 
 function changeIndent(block, index, direction) {
+  if (props.readOnly) return
   if (!indentableTypes.has(block.type)) return
   const currentIndent = block.indent || 0
   if (direction < 0) {
@@ -174,6 +182,7 @@ function changeIndent(block, index, direction) {
 }
 
 function toggleBlockMenu(blockId, focusFirstAction = false) {
+  if (props.readOnly) return
   openBlockMenuId.value = openBlockMenuId.value === blockId ? null : blockId
   if (!openBlockMenuId.value || !focusFirstAction) return
   nextTick(() => menuRefs.get(blockId)?.querySelector('button:not(:disabled)')?.focus())
@@ -185,6 +194,7 @@ function closeBlockMenu(blockId, restoreFocus = false) {
 }
 
 function applySuggestion(block, option) {
+  if (props.readOnly) return
   const marker = activeSuggestion.value.type === 'context' ? '@' : '#'
   const insertion = `${marker}${option} `
   const content =
@@ -202,6 +212,7 @@ function applySuggestion(block, option) {
 }
 
 function handleKeydown(block, index, event) {
+  if (props.readOnly) return
   const suggestion = activeSuggestion.value?.blockId === block.id
     ? activeSuggestion.value
     : null
@@ -293,13 +304,20 @@ function handleKeydown(block, index, event) {
 }
 
 function removeBlock(blockId) {
+  if (props.readOnly) return
   openBlockMenuId.value = null
   emit('remove-block', blockId)
 }
 
 function openReminder(block) {
+  if (props.readOnly) return
   openBlockMenuId.value = null
   emit('edit-reminder', block)
+}
+
+function toggleTask(block) {
+  if (props.readOnly) return
+  emit('update-block', block.id, { checked: !block.checked })
 }
 
 function handlePointerDown(event) {
@@ -307,6 +325,16 @@ function handlePointerDown(event) {
   if (event.target.closest('[data-block-menu]')) return
   openBlockMenuId.value = null
 }
+
+watch(
+  () => props.readOnly,
+  (readOnly) => {
+    if (!readOnly) return
+    activeSuggestion.value = null
+    focusedBlockId.value = null
+    openBlockMenuId.value = null
+  },
+)
 
 onMounted(() => {
   window.addEventListener('pointerdown', handlePointerDown)
@@ -319,7 +347,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="block-editor">
+  <div class="block-editor" :class="{ 'read-only': readOnly }">
     <div
       v-for="(block, index) in note.blocks"
       :key="block.id"
@@ -340,14 +368,17 @@ onBeforeUnmount(() => {
         <button
           v-if="block.type === 'task'"
           class="task-toggle"
+          :disabled="readOnly"
+          :title="readOnly ? 'Documento bloqueado' : undefined"
           :aria-label="block.checked ? 'Marcar como pendiente' : 'Completar tarea'"
           :aria-pressed="block.checked"
-          @click="emit('update-block', block.id, { checked: !block.checked })"
+          @click="toggleTask(block)"
         >{{ block.checked ? '✓' : '' }}</button>
         <button
           v-else
           class="block-kind-button"
-          :title="`Editar ${blockTypeDefinitions[block.type]?.label || 'bloque'}`"
+          :disabled="readOnly"
+          :title="readOnly ? 'Documento bloqueado' : `Editar ${blockTypeDefinitions[block.type]?.label || 'bloque'}`"
           @click="focusBlock(block.id)"
         >
           {{ blockTypeDefinitions[block.type]?.icon || '•' }}
@@ -356,15 +387,15 @@ onBeforeUnmount(() => {
 
       <div class="block-main">
         <div
-          v-show="focusedBlockId !== block.id"
+          v-show="readOnly || focusedBlockId !== block.id"
           class="block-rendered"
           :class="{
             'title-block': block.type === 'heading' && block.level === 1,
             placeholder: !block.content,
           }"
-          role="textbox"
-          tabindex="0"
-          :aria-label="block.content || 'Bloque vacío. Pulsa para editar'"
+          :role="readOnly ? undefined : 'textbox'"
+          :tabindex="readOnly ? undefined : 0"
+          :aria-label="readOnly ? undefined : block.content || 'Bloque vacío. Pulsa para editar'"
           @click="focusBlock(block.id)"
           @keydown.enter.prevent="focusBlock(block.id)"
         >
@@ -374,15 +405,16 @@ onBeforeUnmount(() => {
             @context="emit('open-context', $event)"
             @tag="emit('open-tag', $event)"
           />
-          <span v-else>{{ block.type === 'task' ? 'Nueva tarea…' : 'Escribe algo…' }}</span>
+          <span v-else>{{ readOnly ? 'Sin contenido' : block.type === 'task' ? 'Nueva tarea…' : 'Escribe algo…' }}</span>
         </div>
 
         <textarea
-          v-show="focusedBlockId === block.id"
+          v-show="!readOnly && focusedBlockId === block.id"
           :ref="(element) => registerInput(block.id, element)"
           class="block-input"
           :class="{ 'title-block': block.type === 'heading' && block.level === 1 }"
           :value="block.content"
+          :readonly="readOnly"
           rows="1"
           :placeholder="block.type === 'heading' ? 'Encabezado' : block.type === 'task' ? 'Nueva tarea…' : 'Escribe algo…'"
           @focus="focusedBlockId = block.id; resize($event)"
@@ -409,7 +441,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div
-          v-if="activeSuggestion?.blockId === block.id"
+          v-if="!readOnly && activeSuggestion?.blockId === block.id"
           class="suggestion-menu"
         >
           <button
@@ -429,7 +461,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div
-          v-if="focusedBlockId === block.id"
+          v-if="!readOnly && focusedBlockId === block.id"
           class="block-menu-anchor"
           data-block-menu
         >
@@ -531,6 +563,7 @@ onBeforeUnmount(() => {
     </div>
 
     <button
+      v-if="!readOnly"
       class="add-entry-button"
       @click="addBlockAfter(note.blocks.at(-1)?.id)"
     >

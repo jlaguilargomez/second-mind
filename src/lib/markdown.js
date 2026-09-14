@@ -423,6 +423,7 @@ export function serializeNote(note) {
     id: note.id,
     type: note.kind,
     ...(note.date ? { date: note.date } : {}),
+    ...(note.locked ? { locked: true } : {}),
     ...(note.kind === 'context'
       ? {
           name: note.title,
@@ -454,6 +455,7 @@ export function normalizeNote(note) {
   const now = new Date().toISOString()
   const inferredKind = note.kind || parsed.attributes.type || (dateMatch ? 'journal' : 'context')
   const normalizedTitle = note.title || parsed.attributes.name || parsed.title || fallbackTitle
+  const rawLocked = note.locked ?? parsed.attributes.locked
   const normalized = {
     id: note.id || parsed.attributes.id || createId(),
     kind: inferredKind,
@@ -464,6 +466,9 @@ export function normalizeNote(note) {
     color: note.color || parsed.attributes.color || 'sage',
     contextType: note.contextType || parsed.attributes.contextType || DEFAULT_CONTEXT_TYPE,
     description: (note.description || parsed.attributes.description || '').slice(0, 50),
+    locked:
+      ['journal', 'note'].includes(inferredKind) &&
+      (rawLocked === true || String(rawLocked).toLocaleLowerCase() === 'true'),
     blocks: applySectionContexts(
       (note.blocks || parsed.blocks).map((block) => {
         const properties = { ...(block.properties || {}) }

@@ -1,4 +1,4 @@
-import { NotesRepository } from './NotesRepository'
+import { NotesRepository } from './NotesRepository.js'
 
 const DB_NAME = 'second-mind-v2'
 const DB_VERSION = 1

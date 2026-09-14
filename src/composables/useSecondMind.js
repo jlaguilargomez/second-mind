@@ -18,7 +18,7 @@ import {
   removeTagReference,
   serializeNote,
   sortContextBlocksByDate,
-} from '../lib/markdown'
+} from '../lib/markdown.js'
 import {
   cloneTemplateBlocks,
   createDefaultWorkspaceSettings,
@@ -30,8 +30,8 @@ import {
   normalizeWorkspaceSettings,
   resolveActiveDailyTemplate,
   WORKSPACE_SETTINGS_KEY,
-} from '../lib/templates'
-import { LocalRepository } from '../repositories/LocalRepository'
+} from '../lib/templates.js'
+import { LocalRepository } from '../repositories/LocalRepository.js'
 import {
   getDirectoryHandle,
   readMarkdownTree,
@@ -42,7 +42,7 @@ import {
   verifyPermission,
   writeNote,
   writeWorkspaceManifest,
-} from '../lib/storage'
+} from '../lib/storage.js'
 
 const LEGACY_LOCAL_KEY = 'second-mind-notes-v1'
 const THEME_PREFERENCE_KEY = 'second-mind-theme'
@@ -188,6 +188,7 @@ export function useSecondMind() {
           noteDate: note.date,
           noteTitle: note.title,
           noteKind: note.kind,
+          noteLocked: Boolean(note.locked),
           contexts: block.contexts || extractContexts(block.content),
           tags: block.tags || extractTags(block.content),
           inheritedTags: block.inheritedTags || [],
@@ -584,7 +585,7 @@ export function useSecondMind() {
   async function renameNote(id, title) {
     const note = independentNotes.value.find((item) => item.id === id)
     const nextTitle = String(title || '').trim()
-    if (!note || !nextTitle) return null
+    if (!note || note.locked || !nextTitle) return null
     const renamed = normalizeNote({
       ...note,
       title: nextTitle,
@@ -603,7 +604,7 @@ export function useSecondMind() {
 
   async function deleteNote(id) {
     const note = independentNotes.value.find((item) => item.id === id)
-    if (!note) return
+    if (!note || note.locked) return false
     const pendingSave = saveTimers.get(id)
     if (pendingSave) clearTimeout(pendingSave.timer)
     saveTimers.delete(id)
@@ -619,6 +620,28 @@ export function useSecondMind() {
       selectedContext.value = null
       currentView.value = 'notes'
     }
+    return true
+  }
+
+  async function setNoteLocked(id, locked) {
+    const note = notes.value.find((item) => item.id === id)
+    if (!note || !['journal', 'note'].includes(note.kind)) return null
+
+    const nextLocked = Boolean(locked)
+    if (note.locked === nextLocked) return note
+
+    const pendingSave = saveTimers.get(id)
+    if (pendingSave) clearTimeout(pendingSave.timer)
+    saveTimers.delete(id)
+
+    const updated = normalizeNote({
+      ...note,
+      locked: nextLocked,
+      markdown: undefined,
+    })
+    replaceNote(updated)
+    await persistNote(updated, { immediate: true })
+    return notes.value.find((item) => item.id === id) || updated
   }
 
   async function activateFirstAvailableNote({ createJournal = true } = {}) {
@@ -690,7 +713,7 @@ export function useSecondMind() {
 
   async function removeReferences(name, removeReference, excludedNoteId = null) {
     const affected = notes.value
-      .filter((note) => note.id !== excludedNoteId)
+      .filter((note) => note.id !== excludedNoteId && !note.locked)
       .map((note) => {
         const blocks = note.blocks.map((block) => ({
           ...block,
@@ -734,7 +757,7 @@ export function useSecondMind() {
     }
 
     const affected = notes.value
-      .filter((note) => note.id !== excludedNoteId)
+      .filter((note) => note.id !== excludedNoteId && !note.locked)
       .map((note) => {
         const blocks = note.blocks.map((block) => ({
           ...block,
@@ -846,7 +869,7 @@ export function useSecondMind() {
 
   function updateBlock(noteId, blockId, patch) {
     const note = notes.value.find((item) => item.id === noteId)
-    if (!note) return
+    if (!note || note.locked) return false
     const blocks = note.blocks.map((block) =>
       block.id === blockId
         ? { ...block, ...patch, updatedAt: new Date().toISOString() }
@@ -855,11 +878,12 @@ export function useSecondMind() {
     const updated = normalizeNote({ ...note, blocks, markdown: undefined })
     replaceNote(updated)
     persistNote(updated)
+    return true
   }
 
   function addBlock(noteId, afterBlockId, type = 'log', content = '', options = {}) {
     const note = notes.value.find((item) => item.id === noteId)
-    if (!note) return null
+    if (!note || note.locked) return null
     const block = { ...createBlock(type, content), ...options }
     const index = note.blocks.findIndex((item) => item.id === afterBlockId)
     const blocks = [...note.blocks]
@@ -872,7 +896,7 @@ export function useSecondMind() {
 
   function removeBlock(noteId, blockId) {
     const note = notes.value.find((item) => item.id === noteId)
-    if (!note || note.blocks.length <= 1) return
+    if (!note || note.locked || note.blocks.length <= 1) return false
     const updated = normalizeNote({
       ...note,
       markdown: undefined,
@@ -880,6 +904,7 @@ export function useSecondMind() {
     })
     replaceNote(updated)
     persistNote(updated)
+    return true
   }
 
   function changeBlockType(noteId, blockId, type) {
@@ -930,12 +955,17 @@ export function useSecondMind() {
   }
 
   function canApplyDailyTemplateToNote(note) {
-    return Boolean(activeDailyTemplate.value && isBaseJournal(note) && activeDailyTemplate.value.blocks.length)
+    return Boolean(
+      activeDailyTemplate.value &&
+      !note?.locked &&
+      isBaseJournal(note) &&
+      activeDailyTemplate.value.blocks.length
+    )
   }
 
   async function applyDailyTemplate(noteId, templateId = activeDailyTemplateId.value) {
     const note = notes.value.find((item) => item.id === noteId)
-    if (!note || !isBaseJournal(note)) return false
+    if (!note || note.locked || !isBaseJournal(note)) return false
     const template = dailyTemplates.value.find((item) => item.id === templateId)
       || resolveActiveDailyTemplate(workspaceSettings.value)
     if (!template || !template.blocks.length) return false
@@ -1218,6 +1248,7 @@ export function useSecondMind() {
     createNote,
     renameNote,
     deleteNote,
+    setNoteLocked,
     updateContext,
     renameContext,
     updateTag,

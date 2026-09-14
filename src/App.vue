@@ -671,9 +671,22 @@ async function saveIndependentNoteTitle() {
 }
 
 async function deleteIndependentNote() {
-  if (!activeNote.value || activeNote.value.kind !== 'note') return
+  if (!activeNote.value || activeNote.value.kind !== 'note' || activeNote.value.locked) return
   if (!window.confirm(`¿Eliminar la nota «${activeNote.value.title}»? Esta acción no se puede deshacer.`)) return
   await mind.deleteNote(activeNote.value.id)
+}
+
+async function toggleActiveNoteLock() {
+  const note = activeNote.value
+  if (!note || !['journal', 'note'].includes(note.kind)) return
+
+  const nextLocked = !note.locked
+  if (!nextLocked) {
+    const label = note.kind === 'journal' ? 'este día' : `la nota «${note.title}»`
+    if (!window.confirm(`¿Desbloquear ${label}? Podrás volver a modificar su contenido.`)) return
+  }
+
+  await mind.setNoteLocked(note.id, nextLocked)
 }
 
 function resetTemplateDraft() {
@@ -761,6 +774,8 @@ function changeActiveBlockType(blockId, type) {
 }
 
 function editReminder(block) {
+  const sourceNote = notes.value.find((note) => note.id === (block.noteId || activeNote.value?.id))
+  if (block.noteLocked || sourceNote?.locked) return
   reminderBlock.value = {
     ...block,
     noteId: block.noteId || activeNote.value?.id,
@@ -1181,17 +1196,25 @@ onBeforeUnmount(() => {
                 {{ pluralize(journalEntryCount, 'entrada') }} ·
                 {{ pluralize(journalContextCount, 'contexto') }}
               </p>
-              <div v-if="canApplyDailyTemplate" class="page-heading-actions">
-                <button class="primary-button" @click="applyDailyTemplate">
+              <div class="page-heading-actions">
+                <button v-if="canApplyDailyTemplate" class="primary-button" @click="applyDailyTemplate">
                   Usar plantilla
                 </button>
-                <small>{{ currentDailyTemplateName }}</small>
+                <small v-if="canApplyDailyTemplate">{{ currentDailyTemplateName }}</small>
+                <button
+                  class="lock-toggle-button"
+                  :class="{ locked: activeNote.locked }"
+                  :aria-label="activeNote.locked ? 'Desbloquear día' : 'Bloquear día'"
+                  @click="toggleActiveNoteLock"
+                >{{ activeNote.locked ? '🔒 Desbloquear día' : '🔓 Bloquear día' }}</button>
+                <small v-if="activeNote.locked" class="lock-status" role="status">Solo lectura</small>
               </div>
             </div>
             <BlockEditor
               :note="activeNote"
               :contexts="contextIndex"
               :tags="tags"
+              :read-only="activeNote.locked"
               @update-block="updateActiveBlock"
               @add-block="addActiveBlock"
               @remove-block="removeActiveBlock"
@@ -1217,6 +1240,7 @@ onBeforeUnmount(() => {
                     <strong>{{ note.title }}</strong>
                     <span>{{ note.excerpt || 'Sin contenido' }}</span>
                     <small>{{ note.blocks.filter((block) => block.type === 'task' && !block.checked).length }} tareas pendientes</small>
+                    <small v-if="note.locked" class="note-lock-badge">🔒 Solo lectura</small>
                   </button>
                 </article>
               </div>
@@ -1227,15 +1251,36 @@ onBeforeUnmount(() => {
               <div class="note-editor-heading">
                 <div>
                   <p class="eyebrow">NOTA INDEPENDIENTE</p>
-                  <input v-model="noteTitleDraft" aria-label="Título de la nota" @blur="saveIndependentNoteTitle" @keydown.enter.prevent="saveIndependentNoteTitle">
+                  <input
+                    v-model="noteTitleDraft"
+                    :readonly="activeNote.locked"
+                    aria-label="Título de la nota"
+                    @blur="saveIndependentNoteTitle"
+                    @keydown.enter.prevent="saveIndependentNoteTitle"
+                  >
                   <p>{{ activeNote.blocks.filter((block) => block.type !== 'heading' && block.content.trim()).length }} entradas · {{ activeNote.blocks.filter((block) => block.type === 'task' && !block.checked).length }} tareas pendientes</p>
                 </div>
-                <button class="delete-context-button" @click="deleteIndependentNote">Eliminar nota</button>
+                <div class="note-editor-actions">
+                  <button
+                    class="lock-toggle-button"
+                    :class="{ locked: activeNote.locked }"
+                    :aria-label="activeNote.locked ? 'Desbloquear nota' : 'Bloquear nota'"
+                    @click="toggleActiveNoteLock"
+                  >{{ activeNote.locked ? '🔒 Desbloquear nota' : '🔓 Bloquear nota' }}</button>
+                  <span v-if="activeNote.locked" class="lock-status" role="status">Solo lectura</span>
+                  <button
+                    class="delete-context-button"
+                    :disabled="activeNote.locked"
+                    :title="activeNote.locked ? 'Desbloquea la nota para eliminarla' : 'Eliminar nota'"
+                    @click="deleteIndependentNote"
+                  >Eliminar nota</button>
+                </div>
               </div>
               <BlockEditor
                 :note="activeNote"
                 :contexts="contextIndex"
                 :tags="tags"
+                :read-only="activeNote.locked"
                 @update-block="updateActiveBlock"
                 @add-block="addActiveBlock"
                 @remove-block="removeActiveBlock"
@@ -1461,10 +1506,12 @@ onBeforeUnmount(() => {
                 v-for="task in filteredTasks"
                 :key="task.id"
                 class="task-card"
-                :class="{ completed: task.checked }"
+                :class="{ completed: task.checked, locked: task.noteLocked }"
               >
                 <button
                   class="task-toggle"
+                  :disabled="task.noteLocked"
+                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
                   :aria-label="task.checked ? 'Reabrir tarea' : 'Completar tarea'"
                   :aria-pressed="task.checked"
                   @click="mind.updateBlock(task.noteId, task.id, { checked: !task.checked })"
@@ -1484,7 +1531,12 @@ onBeforeUnmount(() => {
                     }}
                   </small>
                 </div>
-                <button class="reminder-button" @click="editReminder(task)">
+                <button
+                  class="reminder-button"
+                  :disabled="task.noteLocked"
+                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
+                  @click="editReminder(task)"
+                >
                   {{ task.reminder ? `◷ ${formatReminderDate(task.reminder)}` : '＋ fecha' }}
                 </button>
               </article>
@@ -1504,12 +1556,22 @@ onBeforeUnmount(() => {
                   <h2>{{ { overdue: 'Vencidos', today: 'Hoy', upcoming: 'Próximos' }[state] }}</h2>
                   <span>{{ items.length }}</span>
                 </header>
-                <article v-for="block in items" :key="block.id" class="agenda-item">
+                <article
+                  v-for="block in items"
+                  :key="block.id"
+                  class="agenda-item"
+                  :class="{ locked: block.noteLocked }"
+                >
                   <time>{{ formatReminderDate(block.reminder) }}</time>
                   <button @click="openTask(block)">
                     <RichText :text="block.content" @context="openContext" @tag="openTag" />
                   </button>
-                  <button aria-label="Reprogramar" @click="editReminder(block)">•••</button>
+                  <button
+                    aria-label="Reprogramar"
+                    :disabled="block.noteLocked"
+                    :title="block.noteLocked ? 'Día bloqueado' : undefined"
+                    @click="editReminder(block)"
+                  >•••</button>
                 </article>
                 <p v-if="!items.length">Nada por aquí.</p>
               </section>
@@ -1525,9 +1587,16 @@ onBeforeUnmount(() => {
 
             <section class="tracking-section">
               <div class="section-title"><h2>Delegado o esperando</h2><span>{{ waitingTasks.length }}</span></div>
-              <article v-for="task in waitingTasks" :key="task.id" class="task-card compact">
+              <article
+                v-for="task in waitingTasks"
+                :key="task.id"
+                class="task-card compact"
+                :class="{ locked: task.noteLocked }"
+              >
                 <button
                   class="task-toggle"
+                  :disabled="task.noteLocked"
+                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
                   aria-label="Resolver seguimiento"
                   :aria-pressed="false"
                   @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
@@ -1543,7 +1612,12 @@ onBeforeUnmount(() => {
                     {{ task.noteDate || task.noteTitle }}
                   </small>
                 </div>
-                <button class="reminder-button" @click="editReminder(task)">◷</button>
+                <button
+                  class="reminder-button"
+                  :disabled="task.noteLocked"
+                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
+                  @click="editReminder(task)"
+                >◷</button>
               </article>
               <p v-if="!waitingTasks.length" class="empty-copy">
                 Añade #delegado o #esperando a una tarea para verla aquí.
@@ -1711,9 +1785,16 @@ onBeforeUnmount(() => {
 
               <section class="context-section">
                 <div class="section-title"><h2>Tareas abiertas</h2><span>{{ activeTagOpenTasks.length }}</span></div>
-                <article v-for="task in activeTagOpenTasks" :key="task.id" class="task-card compact">
+                <article
+                  v-for="task in activeTagOpenTasks"
+                  :key="task.id"
+                  class="task-card compact"
+                  :class="{ locked: task.noteLocked }"
+                >
                   <button
                     class="task-toggle"
+                    :disabled="task.noteLocked"
+                    :title="task.noteLocked ? 'Día bloqueado' : undefined"
                     aria-label="Completar tarea"
                     :aria-pressed="false"
                     @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
@@ -1722,7 +1803,12 @@ onBeforeUnmount(() => {
                     <RichText :text="task.content" @context="openContext" @tag="openTag" />
                     <small>{{ task.noteDate || task.noteTitle }}</small>
                   </div>
-                  <button class="reminder-button" @click="editReminder(task)">◷</button>
+                  <button
+                    class="reminder-button"
+                    :disabled="task.noteLocked"
+                    :title="task.noteLocked ? 'Día bloqueado' : undefined"
+                    @click="editReminder(task)"
+                  >◷</button>
                 </article>
                 <p v-if="!activeTagOpenTasks.length" class="empty-copy">No hay tareas abiertas para este proyecto.</p>
               </section>
@@ -1733,9 +1819,12 @@ onBeforeUnmount(() => {
                   v-for="task in activeTagCompletedTasks"
                   :key="task.id"
                   class="task-card compact completed"
+                  :class="{ locked: task.noteLocked }"
                 >
                   <button
                     class="task-toggle"
+                    :disabled="task.noteLocked"
+                    :title="task.noteLocked ? 'Día bloqueado' : undefined"
                     aria-label="Reabrir tarea"
                     :aria-pressed="true"
                     @click="mind.updateBlock(task.noteId, task.id, { checked: false })"
@@ -1806,9 +1895,16 @@ onBeforeUnmount(() => {
                 <h2>Tareas abiertas</h2>
                 <span>{{ contextTasks.length }}</span>
               </div>
-              <article v-for="task in contextTasks" :key="task.id" class="task-card compact">
+              <article
+                v-for="task in contextTasks"
+                :key="task.id"
+                class="task-card compact"
+                :class="{ locked: task.noteLocked }"
+              >
                 <button
                   class="task-toggle"
+                  :disabled="task.noteLocked"
+                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
                   aria-label="Completar tarea"
                   :aria-pressed="false"
                   @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
@@ -1824,7 +1920,12 @@ onBeforeUnmount(() => {
                     {{ task.noteDate }}
                   </small>
                 </div>
-                <button class="reminder-button" @click="editReminder(task)">◷</button>
+                <button
+                  class="reminder-button"
+                  :disabled="task.noteLocked"
+                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
+                  @click="editReminder(task)"
+                >◷</button>
               </article>
             </section>
 

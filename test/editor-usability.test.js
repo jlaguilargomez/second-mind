@@ -131,7 +131,7 @@ test('las opciones avanzadas permanecen ocultas tras un disparador compacto', as
   ])
 
   assert.match(editor, /const openBlockMenuId = ref\(null\)/)
-  assert.match(editor, /v-if="focusedBlockId === block\.id"/)
+  assert.match(editor, /v-if="!readOnly && focusedBlockId === block\.id"/)
   assert.match(editor, /v-if="openBlockMenuId === block\.id"/)
   assert.match(editor, /class="block-menu-trigger"/)
   assert.match(editor, /class="block-menu-trigger-label">Opciones/)

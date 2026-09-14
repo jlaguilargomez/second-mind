@@ -60,7 +60,7 @@ test('las tareas completadas mantienen el mismo estado visual en texto, contexto
     readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
   ])
 
-  assert.match(app, /:class="\{ completed: task\.checked \}"/)
+  assert.match(app, /:class="\{ completed: task\.checked, locked: task\.noteLocked \}"/)
   assert.match(editor, /:aria-pressed="block\.checked"/)
   assert.match(styles, /\.block-task\.completed \.block-rendered button/)
   assert.match(styles, /\.task-card\.completed > div > span button/)
