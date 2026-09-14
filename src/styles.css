@@ -758,7 +758,6 @@ kbd {
 }
 .task-card.compact { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding-inline: 4px; background: transparent; box-shadow: none; }
 .task-card.locked, .agenda-item.locked { border-color: rgba(255,184,107,.18); }
-.task-card.locked .task-toggle:disabled,
 .task-card.locked .reminder-button:disabled,
 .agenda-item.locked > button:disabled { cursor: not-allowed; opacity: .42; }
 .reminder-button {

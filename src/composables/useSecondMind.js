@@ -869,7 +869,16 @@ export function useSecondMind() {
 
   function updateBlock(noteId, blockId, patch) {
     const note = notes.value.find((item) => item.id === noteId)
-    if (!note || note.locked) return false
+    const currentBlock = note?.blocks.find((block) => block.id === blockId)
+    const patchKeys = Object.keys(patch || {})
+    const isLockedTaskToggle = Boolean(
+      note?.locked &&
+      currentBlock?.type === 'task' &&
+      patchKeys.length === 1 &&
+      patchKeys[0] === 'checked' &&
+      typeof patch.checked === 'boolean'
+    )
+    if (!note || (note.locked && !isLockedTaskToggle)) return false
     const blocks = note.blocks.map((block) =>
       block.id === blockId
         ? { ...block, ...patch, updatedAt: new Date().toISOString() }

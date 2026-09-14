@@ -35,7 +35,7 @@ Los `@contextos` agrupan personas, equipos, áreas o zonas de trabajo. Las `#eti
 
 Las notas independientes viven en `notes/` y no están vinculadas a una fecha. Pueden contener listas permanentes con tareas marcables, como una rutina de inicio o cierre del día. Su contenido se mantiene aislado de las vistas globales de tareas, agenda, búsqueda y asistente.
 
-Los diarios y las notas independientes pueden bloquearse cuando estén terminados. Un documento bloqueado permanece navegable y exportable, pero no admite cambios de contenido, tareas, fechas, título o borrado desde ninguna vista. El desbloqueo requiere confirmación y el estado se conserva como `locked: true` en el frontmatter Markdown.
+Los diarios y las notas independientes pueden bloquearse cuando estén terminados. Un documento bloqueado permanece navegable y exportable, pero no admite cambios de contenido, estructura, fechas, prioridad, título o borrado desde ninguna vista. Las tareas conservan únicamente la posibilidad de marcarse como completadas o pendientes. El desbloqueo requiere confirmación y el estado se conserva como `locked: true` en el frontmatter Markdown.
 
 Los contextos pueden ser de tipo Proyecto, Persona, Equipo o Área para conservar compatibilidad con notas existentes, aunque el seguimiento de proyectos se hace desde etiquetas. La vista **Seguimiento** reúne personas relacionadas, equipos/áreas y tareas marcadas con `#delegado` o `#esperando`. Mencionar una `@persona` no convierte una tarea propia en seguimiento.
 

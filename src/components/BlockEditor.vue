@@ -316,7 +316,6 @@ function openReminder(block) {
 }
 
 function toggleTask(block) {
-  if (props.readOnly) return
   emit('update-block', block.id, { checked: !block.checked })
 }
 
@@ -368,8 +367,7 @@ onBeforeUnmount(() => {
         <button
           v-if="block.type === 'task'"
           class="task-toggle"
-          :disabled="readOnly"
-          :title="readOnly ? 'Documento bloqueado' : undefined"
+          :title="readOnly ? 'Cambiar estado de la tarea' : undefined"
           :aria-label="block.checked ? 'Marcar como pendiente' : 'Completar tarea'"
           :aria-pressed="block.checked"
           @click="toggleTask(block)"

@@ -1510,8 +1510,6 @@ onBeforeUnmount(() => {
               >
                 <button
                   class="task-toggle"
-                  :disabled="task.noteLocked"
-                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
                   :aria-label="task.checked ? 'Reabrir tarea' : 'Completar tarea'"
                   :aria-pressed="task.checked"
                   @click="mind.updateBlock(task.noteId, task.id, { checked: !task.checked })"
@@ -1595,8 +1593,6 @@ onBeforeUnmount(() => {
               >
                 <button
                   class="task-toggle"
-                  :disabled="task.noteLocked"
-                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
                   aria-label="Resolver seguimiento"
                   :aria-pressed="false"
                   @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
@@ -1793,8 +1789,6 @@ onBeforeUnmount(() => {
                 >
                   <button
                     class="task-toggle"
-                    :disabled="task.noteLocked"
-                    :title="task.noteLocked ? 'Día bloqueado' : undefined"
                     aria-label="Completar tarea"
                     :aria-pressed="false"
                     @click="mind.updateBlock(task.noteId, task.id, { checked: true })"
@@ -1823,8 +1817,6 @@ onBeforeUnmount(() => {
                 >
                   <button
                     class="task-toggle"
-                    :disabled="task.noteLocked"
-                    :title="task.noteLocked ? 'Día bloqueado' : undefined"
                     aria-label="Reabrir tarea"
                     :aria-pressed="true"
                     @click="mind.updateBlock(task.noteId, task.id, { checked: false })"
@@ -1903,8 +1895,6 @@ onBeforeUnmount(() => {
               >
                 <button
                   class="task-toggle"
-                  :disabled="task.noteLocked"
-                  :title="task.noteLocked ? 'Día bloqueado' : undefined"
                   aria-label="Completar tarea"
                   :aria-pressed="false"
                   @click="mind.updateBlock(task.noteId, task.id, { checked: true })"

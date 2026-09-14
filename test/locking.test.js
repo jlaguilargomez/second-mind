@@ -48,7 +48,7 @@ test('el bloqueo se conserva en Markdown y las notas antiguas siguen desbloquead
   assert.equal(context.locked, false)
 })
 
-test('bloquear integra el último cambio pendiente y detiene mutaciones posteriores', async () => {
+test('bloquear integra el último cambio pendiente y solo permite marcar tareas', async () => {
   const mind = useSecondMind()
   const journal = journalNote({ id: 'journal-1', content: 'Versión inicial' })
   const independent = normalizeNote({
@@ -78,7 +78,9 @@ test('bloquear integra el último cambio pendiente y detiene mutaciones posterio
   assert.equal(locked.version, journal.version + 1)
   assert.equal(saved.length, 1)
   assert.equal(mind.allBlocks.value.find((block) => block.id === taskId).noteLocked, true)
-  assert.equal(mind.updateBlock(journal.id, taskId, { checked: true }), false)
+  assert.equal(mind.updateBlock(journal.id, taskId, { checked: true }), true)
+  assert.equal(mind.notes.value.find((note) => note.id === journal.id).blocks[1].checked, true)
+  assert.equal(mind.updateBlock(journal.id, taskId, { content: 'Cambio bloqueado' }), false)
   assert.equal(mind.addBlock(journal.id, taskId), null)
   assert.equal(mind.removeBlock(journal.id, taskId), false)
   assert.equal(await mind.applyDailyTemplate(journal.id), false)
@@ -139,11 +141,12 @@ test('la interfaz expone solo lectura y desactiva acciones indirectas', async ()
   assert.match(app, /window\.confirm\(`¿Desbloquear/)
   assert.match(app, /:read-only="activeNote\.locked"/)
   assert.match(app, /:readonly="activeNote\.locked"/)
-  assert.match(app, /:disabled="task\.noteLocked"/)
+  assert.match(app, /class="reminder-button"\s+:disabled="task\.noteLocked"/)
   assert.match(app, /class="note-lock-badge"/)
   assert.match(editor, /readOnly: \{ type: Boolean, default: false \}/)
   assert.match(editor, /v-if="!readOnly"\s+class="add-entry-button"/)
   assert.match(editor, /if \(props\.readOnly\) return/)
+  assert.doesNotMatch(editor, /class="task-toggle"\s+:disabled="readOnly"/)
   assert.match(styles, /\.lock-toggle-button/)
   assert.match(styles, /\.block-editor\.read-only/)
 })
