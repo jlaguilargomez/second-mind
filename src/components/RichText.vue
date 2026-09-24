@@ -21,6 +21,14 @@ const emit = defineEmits(['context', 'tag'])
         class="inline-tag"
         @click.stop="emit('tag', token.value)"
       >#{{ token.value }}</button>
+      <a
+        v-else-if="token.type === 'link'"
+        class="inline-link"
+        :href="token.href"
+        target="_blank"
+        rel="noopener noreferrer"
+        @click.stop
+      >{{ token.value }}</a>
       <template v-else>{{ token.value }}</template>
     </template>
   </span>

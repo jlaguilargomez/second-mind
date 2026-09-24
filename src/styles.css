@@ -573,6 +573,8 @@ kbd {
   white-space: pre-wrap; overflow-wrap: anywhere; cursor: text;
 }
 .block-rendered.placeholder { color: var(--text-muted); }
+.inline-link { color: var(--blue); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--blue) 45%, transparent); text-underline-offset: 2px; }
+.inline-link:hover { text-decoration-color: currentColor; }
 .block-input {
   display: block; width: 100%; min-height: 32px; resize: none; overflow: hidden; border: 0; outline: 0;
   padding: 6px 4px; color: var(--text-primary); background: transparent; font-family: var(--font-editor);
